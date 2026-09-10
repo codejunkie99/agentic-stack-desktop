@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# install.sh — agentic-stack installer.
+#
+# Usage:
+#   ./install.sh <adapter-name> [target-dir] [--yes|--reconfigure|--force]
+#                                                # install one adapter
+#   ./install.sh add <adapter-name> [target-dir] # add an adapter to an
+#                                                # already-set-up project
+#   ./install.sh remove <adapter-name> [target-dir] [--yes]
+#                                                # remove an installed adapter
+#   ./install.sh doctor [target-dir]             # read-only audit
+#   ./install.sh status [target-dir]             # one-screen view
+#   ./install.sh dashboard [target-dir]          # interactive project dashboard
+#   ./install.sh mission-control [target-dir]    # beta local web dashboard
+#   ./install.sh brain status                    # optional external Brain integration
+#   ./install.sh manage [target-dir]             # interactive adapter TUI
+#   ./install.sh transfer                        # memory transfer wizard
+#   ./install.sh upgrade [target-dir] [--dry-run|--yes]
+#                                                # safely refresh .agent infra
+#   ./install.sh loop <init|validate|run|resume|status|stop|cleanup|audit>
+#                                                # manage bounded agentic loops
+#   ./install.sh sync-manifest [target-dir]       # repair skills manifest
+#   ./install.sh                                 # bare: install wizard for fresh
+#                                                # projects, dashboard for already
+#                                                # installed interactive projects
+#
+# adapter-name: claude-code | copilot-cli | cursor | gemini | windsurf |
+#               opencode | openclaw | hermes | pi | codex | autohand-code |
+#               standalone-python | antigravity
+#
+# All real logic lives in harness_manager/ (Python). This script is a
+# thin dispatcher so install.sh and install.ps1 share one backend.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+export AGENTIC_STACK_ROOT="$HERE"
+# Prepend HERE so `python3 -m harness_manager.cli` finds the module
+# regardless of which directory the user invoked install.sh from.
+export PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}"
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "error: python3 is required but not found on PATH." >&2
+  echo "       agentic-stack uses python3 for the installer + brain tooling." >&2
+  exit 1
+fi
+
+# Hand off to the Python dispatcher. It owns argv parsing, verb routing,
+# adapter validation, and onboarding flow.
+exec python3 -m harness_manager.cli "$@"

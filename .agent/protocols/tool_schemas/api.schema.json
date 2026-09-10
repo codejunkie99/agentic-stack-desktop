@@ -1,0 +1,31 @@
+{
+  "name": "api",
+  "operations": {
+    "http_get": {
+      "required_args": {
+        "url": {"type": "string", "format": "uri"}
+      },
+      "domain_allowlist": [
+        "api.github.com",
+        "registry.npmjs.org",
+        "pypi.org",
+        "api.anthropic.com",
+        "api.openai.com"
+      ],
+      "requires_approval": false
+    },
+    "http_post": {
+      "required_args": {
+        "url": {"type": "string", "format": "uri"},
+        "body": {"type": "object"}
+      },
+      "domain_allowlist": [
+        "api.github.com",
+        "api.anthropic.com",
+        "api.openai.com"
+      ],
+      "requires_approval": true,
+      "warning": "POST may mutate remote state"
+    }
+  }
+}

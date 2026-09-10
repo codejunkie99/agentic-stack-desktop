@@ -1,0 +1,26 @@
+{
+  "name": "shell",
+  "operations": {
+    "run": {
+      "required_args": {
+        "command": {"type": "string"}
+      },
+      "blocked_patterns": [
+        "rm -rf /",
+        ":(){ :|:& };:",
+        "curl .* | sh",
+        "dd if=.*of=/dev/",
+        "chmod -R 777 /"
+      ],
+      "requires_approval_patterns": [
+        "sudo",
+        "rm -rf",
+        "git push --force",
+        "DROP TABLE",
+        "DROP DATABASE",
+        "TRUNCATE"
+      ],
+      "requires_approval": false
+    }
+  }
+}

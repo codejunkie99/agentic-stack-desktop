@@ -1,0 +1,34 @@
+{
+  "name": "github",
+  "operations": {
+    "create_pr": {
+      "required_args": {
+        "title": {"type": "string", "max_length": 72},
+        "body": {"type": "string"},
+        "base": {"type": "string", "default": "main"},
+        "head": {"type": "string"}
+      },
+      "preconditions": ["all tests must pass", "branch must have commits ahead of base"],
+      "side_effects": ["notifies reviewers", "triggers CI"],
+      "requires_approval": false
+    },
+    "merge_pr": {
+      "required_args": {
+        "pr_number": {"type": "integer"},
+        "merge_method": {"type": "string", "enum": ["squash", "merge", "rebase"]}
+      },
+      "preconditions": ["CI must be passing", "at least one approval"],
+      "side_effects": ["may auto-deploy via CI"],
+      "requires_approval": true
+    },
+    "force_push": {
+      "blocked_targets": ["main", "production", "staging"],
+      "requires_approval": true,
+      "warning": "destructive operation, history will be rewritten"
+    },
+    "delete_branch": {
+      "blocked_targets": ["main", "production", "staging"],
+      "requires_approval": false
+    }
+  }
+}
