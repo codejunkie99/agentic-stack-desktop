@@ -9,79 +9,17 @@ struct StackDesktopRoot: View {
     var body: some View {
         HStack(spacing: 0) {
             if sidebarVisible {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 10) {
-                    Image(systemName: "square.stack.3d.up.fill").font(.title2).foregroundStyle(Palette.accent)
-                    Text("Agentic Stack").font(.system(size: 15, weight: .semibold))
-                }.padding(16)
-                Menu {
-                    ForEach(model.snapshot.workspaces) { project in
-                        Button(project.name) { model.selectedID = project.id }
-                    }
-                    Divider()
-                    Button("Set up a project…") { model.showingOnboarding = true }
-                    Button("Open project…") { model.openProjectPicker() }
-                    Button("New project…") { model.showingNewWorkspace = true }
-                } label: {
-                    HStack {
-                        Image(systemName: "folder")
-                        Text(model.selected?.name ?? "Select a project").lineLimit(1)
-                        Spacer()
-                    }.padding(8)
-                }.menuStyle(.borderlessButton).padding(.horizontal, 12).padding(.bottom, 8)
-                Button { model.newConversation() } label: {
-                    Label("New work", systemImage: "plus").frame(maxWidth: .infinity, alignment: .leading)
-                }.buttonStyle(.borderedProminent).padding(.horizontal, 12).padding(.bottom, 12)
-                    .disabled(model.selected == nil).help("New work · ⌘N")
-                Button { model.spotlightCategory = "All"; model.spotlightTopic = ""; model.spotlightQuery = ""; model.showingCommandPalette = true } label: {
-                    HStack { Label("Search", systemImage: "magnifyingglass"); Spacer(); Text("⌘K").foregroundStyle(.secondary) }
-                        .font(.callout).frame(maxWidth: .infinity, alignment: .leading)
-                }.buttonStyle(.bordered).padding(.horizontal, 12).padding(.bottom, 10)
-                List(selection: sidebarSelection) {
-                    Section {
-                        Label("Work", systemImage: "square.stack.3d.up").tag("section:" + DesktopSection.graph.rawValue)
-                        Label("Memory", systemImage: "brain").tag("section:" + DesktopSection.memory.rawValue)
-                        Label("Connections", systemImage: "point.3.connected.trianglepath.dotted").tag("section:" + DesktopSection.integrations.rawValue)
-                    }
-                    Section("Explore") {
-                        Label("Skills", systemImage: "sparkles").tag("section:" + DesktopSection.skills.rawValue)
-                    }
-                    Section {
-                        ForEach(model.workItems.prefix(12)) { item in
-                            Label(item.title, systemImage: item.status == "completed" ? "checkmark.circle" : "circle.dotted")
-                                .lineLimit(1).tag("work:" + item.id)
-                        }
-                        ForEach(model.conversations.filter { $0.workId == nil }.prefix(12)) { conversation in
-                            Label(conversation.title, systemImage: "bubble.left").lineLimit(1).tag("conversation:" + conversation.id)
-                        }
-                        ForEach(model.runs.filter { $0.workId == nil && $0.conversationId == nil }.prefix(8)) { run in
-                            Label(run.task, systemImage: run.isActive ? "circle.dotted" : "play.circle").lineLimit(1).tag("run:" + run.id)
-                        }
-                        if model.workItems.isEmpty && model.conversations.isEmpty && model.runs.isEmpty {
-                            Text("Your work will appear here.").font(.caption).foregroundStyle(.secondary)
-                        }
-                    } header: { Text("Recent work") }
-                }.listStyle(.sidebar).scrollContentBackground(.hidden).environment(\.defaultMinListRowHeight, 28)
-                Divider().padding(.horizontal, 16)
-                HStack(spacing: 8) {
-                    Image(systemName: model.isRemote ? "server.rack" : "laptopcomputer")
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(model.isRemote ? "Connected server" : "This Mac").font(.caption.weight(.medium))
-                        Text(model.isRemote ? model.serverURL : "Local Agentic Stack").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer()
-                    Button { model.section = .settings } label: { Image(systemName: "gearshape") }.buttonStyle(.plain)
-                }.padding(12)
-            }.frame(width: compact ? 190 : 210).frame(maxHeight: .infinity).background(.bar)
-            Divider()
+                sidebar
+                Divider()
             }
             VStack(spacing: 0) {
                 if let error = model.error ?? model.connectionError ?? model.accountError {
                     HStack(alignment: .top) {
                         Image(systemName: "exclamationmark.circle")
                         Text(error).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                        Button { model.error = nil; model.connectionError = nil; model.accountError = nil } label: { Image(systemName: "xmark") }.buttonStyle(.plain)
-                    }.font(.callout).padding(14).background(Palette.accent.opacity(0.1))
+                        Button("Dismiss error", systemImage: "xmark") { model.error = nil; model.connectionError = nil; model.accountError = nil }
+                            .labelStyle(.iconOnly).buttonStyle(.borderless).frame(width: 28, height: 28)
+                    }.font(StackType.detail).padding(14).background(Palette.accent.opacity(0.1))
                 }
                 workspaceHeader
                 Divider()
@@ -104,15 +42,17 @@ struct StackDesktopRoot: View {
                         QuietEmpty(symbol: "folder.badge.gearshape", title: "Your stack, on your desktop.",
                                    detail: "Open a project to manage its agents, skills, memory and protocols. Use the same stack with Claude Code, Codex and the other supported harnesses.")
                         HStack {
-                            Button("Guided setup", systemImage: "wand.and.stars") { model.showingOnboarding = true }.buttonStyle(.borderedProminent)
-                            Button("Open project…", systemImage: "folder") { model.openProjectPicker() }.buttonStyle(.borderedProminent)
+                            Button("Guided setup", systemImage: "wand.and.stars") { model.showingOnboarding = true }.buttonStyle(.borderedProminent).tint(Palette.accent)
+                            Button("Open project…", systemImage: "folder") { model.openProjectPicker() }.buttonStyle(.bordered)
                             Button("Create new project") { model.showingNewWorkspace = true }
                         }
-                        Button("Connect a hosted stack", systemImage: "server.rack") { model.section = .hosting }.buttonStyle(.plain).foregroundStyle(Palette.accent)
+                        Button("Connect a hosted stack", systemImage: "server.rack") { model.section = .hosting }.buttonStyle(.plain).foregroundStyle(Palette.link)
                     }.padding(44).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(Palette.canvas)
         }
+        .disabled(model.isSearchPresented)
+        .accessibilityHidden(model.isSearchPresented)
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button("Toggle sidebar", systemImage: "sidebar.left") { sidebarVisible.toggle() }
@@ -180,62 +120,160 @@ struct StackDesktopRoot: View {
         }
     }
 
-    private var sidebarSelection: Binding<String> {
-        Binding(get: {
-            if let item = model.currentWork, [.chat, .runs].contains(model.section) { return "work:" + item.id }
-            if model.section == .chat, let conversation = model.conversation { return "conversation:" + conversation.id }
-            if model.section == .runs, let id = model.focusedRunID { return "run:" + id }
-            return "section:" + model.section.workspace.rawValue
-        }, set: { value in
-            if value.hasPrefix("work:"), let item = model.workItems.first(where: { $0.id == String(value.dropFirst(5)) }) {
-                model.openWork(item)
-            } else if value.hasPrefix("conversation:"), let conversation = model.conversations.first(where: { $0.id == String(value.dropFirst(13)) }) {
-                model.openConversation(conversation)
-            } else if value.hasPrefix("run:") {
-                model.openStandaloneRun(String(value.dropFirst(4)))
-            } else if value.hasPrefix("section:"), let section = DesktopSection(rawValue: String(value.dropFirst(8))) {
-                model.section = section == .memory ? .memoryBrowse : section
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "square.stack.3d.up.fill").foregroundStyle(Palette.link)
+                Text("Agentic Stack").font(.system(size: 16, weight: .semibold))
+            }.padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 20)
+            Menu {
+                ForEach(model.snapshot.workspaces) { project in
+                    Button(project.name) { model.selectedID = project.id }
+                }
+                Divider()
+                Button("Open project…") { model.openProjectPicker() }
+                Button("Create project…") { model.showingNewWorkspace = true }
+                Button("Set up project…") { model.showingOnboarding = true }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "folder")
+                    Text(model.selected?.name ?? "Choose a project").lineLimit(1)
+                    Spacer(minLength: 0)
+                }.font(StackType.detail.weight(.medium)).padding(8)
+            }.menuStyle(.borderlessButton).help(model.selected?.name ?? "Choose a project")
+                .padding(.horizontal, 12)
+            Button { model.newConversation() } label: {
+                Label("New work", systemImage: "plus").font(StackType.detail.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            }.buttonStyle(.borderedProminent).tint(Palette.accent).disabled(model.selected == nil)
+                .help("New work · ⌘N").padding(.horizontal, 14).padding(.top, 12)
+            Button {
+                model.spotlightCategory = "All"; model.spotlightTopic = ""; model.spotlightQuery = ""
+                model.showingCommandPalette = true
+            } label: {
+                HStack {
+                    Label("Search", systemImage: "magnifyingglass")
+                    Spacer()
+                    Text("⌘K").font(StackType.caption).foregroundStyle(Palette.secondary)
+                }.font(StackType.detail).frame(minHeight: 34).contentShape(Rectangle())
+            }.buttonStyle(.borderless).foregroundStyle(Palette.text).padding(.horizontal, 20).padding(.vertical, 10)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 5) {
+                    sidebarCaption("Workspace")
+                    navigationRow("Work", symbol: "square.stack.3d.up", section: .graph)
+                    navigationRow("Memory", symbol: "brain", section: .memory)
+                    navigationRow("Connections", symbol: "point.3.connected.trianglepath.dotted", section: .integrations)
+                    navigationRow("Skills", symbol: "sparkles", section: .skills)
+                    sidebarCaption("Recent work").padding(.top, 20)
+                    ForEach(model.workItems.prefix(12)) { item in
+                        Button { model.openWork(item) } label: {
+                            Label(item.title, systemImage: item.status == "completed" ? "checkmark.circle" : "circle.dotted")
+                                .lineLimit(1).font(StackType.detail).frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+                                .padding(.horizontal, 10).contentShape(Rectangle())
+                        }.buttonStyle(.borderless).foregroundStyle(Palette.text).help(item.title)
+                    }
+                    ForEach(model.conversations.filter { $0.workId == nil }.prefix(12)) { item in
+                        Button { model.openConversation(item) } label: {
+                            Label(item.title, systemImage: "bubble.left").lineLimit(1).font(StackType.detail)
+                                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
+                        }.buttonStyle(.borderless).foregroundStyle(Palette.text).help(item.title)
+                    }
+                    ForEach(model.runs.filter { $0.workId == nil && $0.conversationId == nil }.prefix(8)) { run in
+                        Button { model.openStandaloneRun(run.id) } label: {
+                            Label(run.task, systemImage: "play.circle").lineLimit(1).font(StackType.detail)
+                                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
+                        }.buttonStyle(.borderless).foregroundStyle(Palette.text).help(run.task)
+                    }
+                    if model.workItems.isEmpty && model.conversations.isEmpty && model.runs.isEmpty {
+                        Text("Start new work to keep its conversations and results here.")
+                            .font(StackType.caption).foregroundStyle(Palette.secondary).lineSpacing(3).padding(10)
+                    }
+                }.padding(.horizontal, 10).padding(.bottom, 16)
             }
-        })
+            Divider().padding(.horizontal, 16)
+            navigationRow("Settings", symbol: "gearshape", section: .settings).padding(.horizontal, 10).padding(.top, 10)
+            HStack(spacing: 9) {
+                Image(systemName: model.isRemote ? "server.rack" : "laptopcomputer")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model.isRemote ? "Connected server" : "This Mac").font(StackType.caption.weight(.medium))
+                    Text(model.isRemote ? model.serverURL : "Local workspace").font(StackType.caption)
+                        .foregroundStyle(Palette.secondary).lineLimit(1).help(model.isRemote ? model.serverURL : "Runs locally on this Mac")
+                }
+            }.padding(20)
+        }
+        .frame(width: compact ? 208 : 232).frame(maxHeight: .infinity)
+        .background(Palette.sidebar)
+    }
+
+    private func sidebarCaption(_ title: String) -> some View {
+        Text(title).font(StackType.caption.weight(.medium)).foregroundStyle(Palette.secondary)
+            .padding(.horizontal, 10).padding(.bottom, 5).accessibilityAddTraits(.isHeader)
+    }
+
+    private func navigationRow(_ title: String, symbol: String, section: DesktopSection) -> some View {
+        let selected = model.section.workspace == section.workspace
+        return Button { model.section = section } label: {
+            HStack(spacing: 10) {
+                Image(systemName: symbol).font(.system(size: 15)).frame(width: 20)
+                Text(title).font(StackType.detail.weight(selected ? .semibold : .regular))
+                Spacer(minLength: 0)
+                if selected { RoundedRectangle(cornerRadius: 2).fill(Palette.link).frame(width: 3, height: 16) }
+            }
+            .foregroundStyle(Palette.text).padding(.horizontal, 10).frame(minHeight: 38)
+            .background(selected ? Palette.selection : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }.buttonStyle(.borderless).accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var workspaceHeader: some View {
-        HStack(spacing: compact ? 10 : 16) {
-            sectionTitle
-                .frame(minWidth: compact ? 96 : 130, maxWidth: compact ? 130 : 210, alignment: .leading)
-                .layoutPriority(0)
-            if !model.section.siblings.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(model.section.siblings) { page in
-                            Button { model.section = page } label: {
-                                Text(page.pageTitle)
-                                    .font(.system(size: 11, weight: model.section == page ? .semibold : .regular))
-                                    .foregroundStyle(model.section == page ? Color.primary : Color.secondary)
-                                    .padding(.horizontal, 10).padding(.vertical, 7)
-                                    .background(model.section == page ? Palette.accent.opacity(0.14) : .clear, in: Capsule())
-                                    .fixedSize(horizontal: true, vertical: false)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityAddTraits(model.section == page ? .isSelected : [])
-                            .disabled(model.selected == nil && ![DesktopSection.settings, .hosting, .integrations].contains(page))
-                        }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 16) {
+                sectionTitle
+                if [DesktopSection.graph, .chat].contains(model.section) {
+                    Button("Toggle context inspector", systemImage: "sidebar.right") {
+                        model.contextInspectorVisible.toggle()
                     }
+                    .labelStyle(.iconOnly).buttonStyle(.borderless)
+                    .frame(width: 28, height: 28).help("Toggle context inspector")
                 }
-                .accessibilityLabel(model.section.workspaceTitle + " sections")
-                .layoutPriority(2)
+                if canRun { runButton }
             }
-            Spacer(minLength: 0)
-            if [DesktopSection.graph, .chat].contains(model.section) {
-                Button { model.contextInspectorVisible.toggle() } label: { Image(systemName: "sidebar.right") }
-                    .buttonStyle(.plain)
-                    .help("Toggle context inspector")
-                    .accessibilityLabel("Toggle context inspector")
+            if !model.section.siblings.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    sectionTabs
+                    Menu {
+                        ForEach(model.section.siblings) { page in
+                            Button(page.pageTitle) { model.section = page }
+                                .disabled(model.selected == nil && ![DesktopSection.settings, .hosting, .integrations].contains(page))
+                        }
+                    } label: {
+                        Label(model.section.pageTitle, systemImage: "chevron.down")
+                    }
+                    .accessibilityLabel(model.section.workspaceTitle + " sections")
+                }
             }
-            if canRun { runButton }
         }
         .padding(.horizontal, compact ? 18 : 24)
-        .frame(height: 58)
+        .padding(.vertical, 12)
+    }
+
+    private var sectionTabs: some View {
+        HStack(spacing: 4) {
+            ForEach(model.section.siblings) { page in
+                Button { model.section = page } label: {
+                    Text(page.pageTitle)
+                        .font(.system(size: 13, weight: model.section == page ? .semibold : .regular))
+                        .foregroundStyle(model.section == page ? Palette.text : Palette.secondary)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(model.section == page ? Palette.selection : .clear, in: RoundedRectangle(cornerRadius: 8))
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityAddTraits(model.section == page ? .isSelected : [])
+                .disabled(model.selected == nil && ![DesktopSection.settings, .hosting, .integrations].contains(page))
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var canRun: Bool {
@@ -244,17 +282,18 @@ struct StackDesktopRoot: View {
 
     private var sectionTitle: some View {
         HStack(spacing: 12) {
-            Text(model.section.workspaceTitle).font(.system(size: 18, weight: .semibold)).lineLimit(1)
+            Text(model.section.workspaceTitle).font(.system(size: 20, weight: .semibold)).lineLimit(1)
             if !compact {
                 Divider().frame(height: 16)
-                Text(model.selected?.name ?? "Agentic Stack").font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                Text(model.selected?.name ?? "Agentic Stack").font(StackType.detail).foregroundStyle(Palette.secondary).lineLimit(1)
+                    .help(model.selected?.name ?? "Agentic Stack")
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var runButton: some View {
         Button("New task", systemImage: "play.fill") { model.showingRun = true }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.borderedProminent).tint(Palette.accent)
             .fixedSize()
             .disabled(model.busy || model.runs.contains(where: \.isActive))
     }
@@ -262,13 +301,14 @@ struct StackDesktopRoot: View {
     @ViewBuilder private var content: some View {
         switch model.section {
         case .chat, .graph: GraphWorkView(model: model).id(model.terminalHost + (model.selectedID ?? ""))
-        case .overview, .insights: ProjectDashboardView(model: model).id(model.terminalHost + (model.selectedID ?? ""))
+        case .overview: WorkHistoryView(model: model)
+        case .insights: ProjectDashboardView(model: model).id(model.terminalHost + (model.selectedID ?? ""))
         case .terminal: TerminalWorkspaceView(model: model)
         case .references: KnowledgeView(model: model)
         case .handover: HandoverView(model: model)
         case .runs: RunsView(model: model).id(model.terminalHost + (model.selectedID ?? ""))
         case .loops: LoopManagementView(model: model).id(model.terminalHost + (model.selectedID ?? ""))
-        case .memory: MemoryManagementView(model: model).id(model.terminalHost + (model.selectedID ?? ""))
+        case .memory: JevMemoryPage(model: model).id(model.terminalHost + (model.selectedID ?? ""))
         case .memoryBrowse: KnowledgeGraphView(model: model).id(model.terminalHost + (model.selectedID ?? ""))
         case .personal: PersonalMemoryView(model: model).id(model.terminalHost + (model.selectedID ?? ""))
         default: StackManagementView(model: model, section: model.section.rawValue).id(model.terminalHost + (model.selectedID ?? "") + model.section.rawValue)
@@ -283,14 +323,14 @@ struct RemoteProjectSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Open a server project").font(.title2.weight(.semibold))
-            Text("Enter the repository's absolute path on the connected server.").foregroundStyle(.secondary)
+            Text("Enter the repository's absolute path on the connected server.").foregroundStyle(Palette.secondary)
             TextField("/data/projects/my-project", text: $path).textFieldStyle(.roundedBorder)
-            if let error = model.error { Text(error).font(.callout).foregroundStyle(Palette.accent) }
+            if let error = model.error { Text(error).font(StackType.detail).foregroundStyle(Palette.link) }
             HStack {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
                 Button("Open project") { Task { if await model.openProject(path: path) { dismiss() } } }
-                    .buttonStyle(.borderedProminent).disabled(model.busy || path.isEmpty)
+                    .buttonStyle(.borderedProminent).tint(Palette.accent).disabled(model.busy || path.isEmpty)
             }
         }.padding(28).frame(width: 500)
     }

@@ -125,13 +125,13 @@ def test_mcp_prepares_same_memory_with_read_only_database(tmp_path, monkeypatch)
     try:
         desktop = ContextPacks().prepare(service.knowledge, workspace['id'], 'SQLite storage', dict(mode='local'))
         server = MCPServer(home)
-        shared = server.prepare_context(dict(workspaceId=workspace['id'], prompt='SQLite storage'))
+        shared = server.prepare_context(dict(workspaceId=workspace['id'], prompt='SQLite storage', contextOptions={'mode': 'local'}))
         assert shared['refs'] == desktop['refs']
         assert search_memory('SQLite', home=home)[0]['status'] == 'reference'
         assert all(p.read_bytes() == raw for p, raw in before.items())
         note = desktop['refs'][0]
         service.knowledge.review_note(dict(workspaceId=workspace['id'], noteId=note['id'], status='retracted', reason='No longer valid'))
-        assert server.prepare_context(dict(workspaceId=workspace['id'], prompt='SQLite storage'))['refs'] == []
+        assert server.prepare_context(dict(workspaceId=workspace['id'], prompt='SQLite storage', contextOptions={'mode': 'local'}))['refs'] == []
         assert search_memory('SQLite', home=home) == []
     finally:
         service.close()
@@ -148,7 +148,7 @@ def test_automatic_conversations_are_scoped_and_exact(tmp_path, monkeypatch):
                                         status='completed', reviewed=True, provider='local'))
     monkeypatch.setattr(service.conversation_refs, '_live', lambda: [])
     try:
-        pack = service.dispatch('context.prepare', dict(workspaceId=workspace['id'], prompt='Quartz release'))
+        pack = service.dispatch('context.prepare', dict(workspaceId=workspace['id'], prompt='Quartz release', contextOptions={'mode': 'local'}))
         assert any(r['kind'] == 'conversation' for r in pack['refs'])
         assert 'Quartz release uses SQLite.' in pack['text'] and 'private other' not in pack['text']
         identifier = next(r['id'] for r in pack['refs'] if r['kind'] == 'conversation')
@@ -181,7 +181,7 @@ def test_pinned_live_chat_refreshes_only_its_source(tmp_path):
                 'content': [{'type': 'input_text', 'text': body}]}}]))
     try:
         write('Mercury launch original evidence.')
-        original = service.dispatch('context.prepare', dict(workspaceId=workspace['id'], prompt='Mercury'))
+        original = service.dispatch('context.prepare', dict(workspaceId=workspace['id'], prompt='Mercury', contextOptions={'mode': 'local'}))
         identifier = original['refs'][0]['id']
         assert identifier.startswith('live:')
         config = dict(mode='local', pinnedIds=[identifier])

@@ -226,9 +226,9 @@ struct TerminalWorkspaceView: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Label(model.isRemote ? "Server" : "This Mac", systemImage: model.isRemote ? "server.rack" : "laptopcomputer")
-                    .font(.callout.weight(.medium))
+                    .font(StackType.detail.weight(.medium))
                 Text(userFacingPath(model.selected?.projectPath ?? pane?.info.path ?? "Project workspace"))
-                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                    .font(.system(size: 12, design: .monospaced)).foregroundStyle(Palette.secondary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
                 Spacer(minLength: 8)
                 Menu("Stack commands") {
                     Button("CLI health dashboard") { launch("stack-dashboard") }
@@ -253,7 +253,7 @@ struct TerminalWorkspaceView: View {
                 Button { Task { await workspace.refresh(model) }; retry += 1 } label: { Image(systemName: "arrow.clockwise") }.help("Reconnect and refresh terminals")
             }.padding(.horizontal, 24).padding(.vertical, 14)
             if let message = workspace.message {
-                Text(message).font(.callout).foregroundStyle(Palette.accent).textSelection(.enabled)
+                Text(message).font(StackType.detail).foregroundStyle(Palette.link).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24).padding(.bottom, 12)
             }
             if let pane {
@@ -265,11 +265,11 @@ struct TerminalWorkspaceView: View {
                                     workspace.selections[workspace.key(model)] = tab.id
                                 } label: {
                                     HStack(spacing: 7) {
-                                        Circle().fill(tab.info.status == "running" ? Palette.accent : .secondary).frame(width: 6, height: 6)
-                                        Text(tab.info.title).font(.callout.weight(.medium))
+                                        Circle().fill(tab.info.status == "running" ? Palette.link : Palette.secondary).frame(width: 6, height: 6)
+                                        Text(tab.info.title).font(StackType.detail.weight(.medium))
                                     }
                                 }.buttonStyle(.plain)
-                                Button { Task { await workspace.close(tab, model: model) } } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .semibold)) }
+                                Button { Task { await workspace.close(tab, model: model) } } label: { Image(systemName: "xmark").font(.system(size: 12, weight: .semibold)) }
                                     .buttonStyle(.plain).help("Close terminal and stop its processes")
                             }.padding(.horizontal, 14).padding(.vertical, 10)
                                 .background(tab.id == pane.id ? Palette.surface : Color.clear, in: RoundedRectangle(cornerRadius: 7))
@@ -283,23 +283,23 @@ struct TerminalWorkspaceView: View {
                         .onDisappear { pane.disconnect() }
                     HStack(spacing: 14) {
                         Text(pane.info.status == "exited" ? "Exited · \(pane.info.exitCode ?? 0)" : pane.connected ? "Connected" : "Connecting…")
-                            .font(.caption.weight(.medium))
-                        if let error = pane.error { Text(error).font(.caption).lineLimit(2).textSelection(.enabled) }
+                            .font(StackType.caption.weight(.medium))
+                        if let error = pane.error { Text(error).font(StackType.caption).lineLimit(2).textSelection(.enabled) }
                         Spacer()
                         Button("Focus terminal") { pane.focus() }.buttonStyle(.plain)
                         Button("Interrupt ⌃C") { pane.input(Data([3])); pane.focus() }.buttonStyle(.plain).disabled(!pane.connected || pane.info.status != "running")
-                    }.font(.caption).foregroundStyle(.secondary).padding(12).background(Palette.surface)
+                    }.font(StackType.caption).foregroundStyle(Palette.secondary).padding(12).background(Palette.surface)
                 }.clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Palette.line))
                     .padding(.horizontal, 24).padding(.bottom, 14)
                 Text("Terminal sessions use the selected agent’s own permissions. Bounded tasks and saved results are in Tasks.")
-                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    .font(StackType.caption).foregroundStyle(Palette.secondary).frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24).padding(.bottom, 18)
             } else {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Open an interactive terminal").font(.system(size: 17, weight: .semibold))
+                    Text("Terminal").font(StackType.title)
                     Text("Use an agent or shell in this project. Tabs stay open as you move around the app.")
-                        .font(.callout).foregroundStyle(.secondary).frame(maxWidth: 440, alignment: .leading)
+                        .font(StackType.detail).foregroundStyle(Palette.secondary).frame(maxWidth: 440, alignment: .leading)
                     HStack(spacing: 12) {
                         Button("Open Codex", systemImage: "terminal") { launch("codex") }
                         Button("Open Claude Code") { launch("claude-code") }
@@ -307,9 +307,9 @@ struct TerminalWorkspaceView: View {
                     }.disabled(workspace.launching || model.selected?.provider != "local")
                     if workspace.launching { ProgressView("Opening terminal…").controlSize(.small) }
                     Text(model.isRemote ? "Commands run on the connected server." : "Local terminal processes stop when you quit Agentic Stack.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(StackType.caption).foregroundStyle(Palette.secondary)
                     if model.selected?.provider != "local" {
-                        Text("Select a local project or connect a hosted stack to use terminals.").foregroundStyle(Palette.accent)
+                        Text("Select a local project or connect a hosted stack to use terminals.").foregroundStyle(Palette.link)
                     }
                 }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }

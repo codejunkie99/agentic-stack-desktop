@@ -40,13 +40,15 @@ struct ProjectDashboardView: View {
             let narrow = geometry.size.width < 760
             ScrollView {
                 VStack(alignment: .leading, spacing: narrow ? 16 : 20) {
+                    StackPageHeading(title: "Project overview", detail: "What is running, what needs review, and what to start next.")
                     heading
                     metrics
                     if !message.isEmpty {
                         Label(message, systemImage: "exclamationmark.circle")
-                            .font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                            .font(StackType.detail).foregroundStyle(Palette.secondary).textSelection(.enabled)
                     }
-                    HStack(alignment: .top, spacing: narrow ? 16 : 24) {
+                    let columns = narrow ? AnyLayout(VStackLayout(alignment: .leading, spacing: 24)) : AnyLayout(HStackLayout(alignment: .top, spacing: 24))
+                    columns {
                         VStack(alignment: .leading, spacing: 22) {
                             composer
                             workQueue
@@ -54,7 +56,7 @@ struct ProjectDashboardView: View {
                         VStack(alignment: .leading, spacing: 24) {
                             agents
                             context
-                        }.frame(width: narrow ? 200 : 262)
+                        }.frame(maxWidth: narrow ? .infinity : 280)
                     }
                 }
                 .padding(narrow ? 18 : 24)
@@ -77,7 +79,7 @@ struct ProjectDashboardView: View {
     private var heading: some View {
         HStack(alignment: .center, spacing: 12) {
             Label(model.selected?.projectPath ?? model.selected?.name ?? "Project", systemImage: "folder")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .font(.system(size: 12)).foregroundStyle(Palette.secondary)
                 .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
             Spacer(minLength: 8)
             Button { Task { await load(); await model.refreshAccounts() } } label: {
@@ -95,9 +97,9 @@ struct ProjectDashboardView: View {
     }
 
     private var metrics: some View {
-        HStack(spacing: 0) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 16)], alignment: .leading, spacing: 20) {
             metric("Running", value: String(active.count), symbol: "circle.dotted", color: .blue) { filter = .active }
-            metric("Needs review", value: String(review.count), symbol: "checkmark.circle", color: Palette.accent) { filter = .review }
+            metric("Needs review", value: String(review.count), symbol: "checkmark.circle", color: Palette.link) { filter = .review }
             metric("Agents ready", value: model.accounts.isEmpty ? "—" : String(ready.count), symbol: "terminal", color: .green) { model.section = .integrations }
             metric("Imported notes", value: knowledge.map { $0.total.formatted() } ?? "—", symbol: "point.3.connected.trianglepath.dotted", color: .secondary) { model.section = .graph }
         }
@@ -109,7 +111,7 @@ struct ProjectDashboardView: View {
     private func metric(_ title: String, value: String, symbol: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 7) {
-                Label(title, systemImage: symbol).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                Label(title, systemImage: symbol).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.secondary)
                     .lineLimit(1).minimumScaleFactor(0.8)
                 Text(value).font(.system(size: 27, weight: .medium, design: .rounded)).monospacedDigit()
                     .foregroundStyle(value == "0" || value == "—" ? Color.secondary : color)
@@ -124,7 +126,7 @@ struct ProjectDashboardView: View {
                 ZStack(alignment: .topLeading) {
                     if draft.wrappedValue.isEmpty {
                         Text("What would you like to build, fix, or explore?")
-                            .font(.system(size: 13)).foregroundStyle(.secondary)
+                            .font(.system(size: 13)).foregroundStyle(Palette.secondary)
                             .padding(.horizontal, 14).padding(.top, 14).allowsHitTesting(false)
                     }
                     TextEditor(text: draft).font(.system(size: 13)).scrollContentBackground(.hidden)
@@ -134,12 +136,12 @@ struct ProjectDashboardView: View {
                 HStack(spacing: 10) {
                     Button { model.section = .terminal } label: {
                         Label("Terminal", systemImage: "apple.terminal")
-                    }.buttonStyle(.borderless).foregroundStyle(.secondary).help("Open interactive agent terminals")
+                    }.buttonStyle(.borderless).foregroundStyle(Palette.secondary).help("Open interactive agent terminals")
                     Spacer(minLength: 2)
                     Button("Create task…", systemImage: "arrow.up") {
                         model.runTemplate = draft.wrappedValue
                         model.showingRun = true
-                    }.buttonStyle(.borderedProminent)
+                    }.buttonStyle(.borderedProminent).tint(Palette.accent)
                         .disabled(draft.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.busy)
                 }.controlSize(.regular).padding(.horizontal, 12).padding(.bottom, 12)
             }
@@ -155,7 +157,7 @@ struct ProjectDashboardView: View {
 
     private func suggestion(_ title: String, prompt: String) -> some View {
         Button(title) { draft.wrappedValue = prompt; composing = true }
-            .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
+            .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Palette.secondary)
             .help("Fill the task prompt: \(title)")
     }
 
@@ -165,7 +167,7 @@ struct ProjectDashboardView: View {
                 Text("Work queue").font(.system(size: 15, weight: .semibold))
                 Spacer()
                 Button("View all", systemImage: "arrow.up.right") { model.section = .runs }
-                    .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
+                    .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Palette.secondary)
             }
             HStack(spacing: 18) {
                 ForEach(DashboardTaskFilter.allCases) { item in
@@ -184,15 +186,15 @@ struct ProjectDashboardView: View {
             if tasks.isEmpty {
                 VStack(alignment: .leading, spacing: 9) {
                     Image(systemName: filter == .review ? "checkmark.circle" : "tray")
-                        .font(.system(size: 23, weight: .light)).foregroundStyle(.secondary).padding(.bottom, 3)
+                        .font(.system(size: 23, weight: .light)).foregroundStyle(Palette.secondary).padding(.bottom, 3)
                     Text(emptyTitle).font(.system(size: 14, weight: .medium))
-                    Text(emptyDetail).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(emptyDetail).font(.system(size: 12)).foregroundStyle(Palette.secondary)
                         .fixedSize(horizontal: false, vertical: true).lineSpacing(3)
                     if model.runs.isEmpty {
                         Button("Write your first task", systemImage: "arrow.up") { composing = true }
-                            .buttonStyle(.plain).foregroundStyle(Palette.accent).font(.system(size: 12, weight: .medium)).padding(.top, 3)
+                            .buttonStyle(.plain).foregroundStyle(Palette.link).font(.system(size: 12, weight: .medium)).padding(.top, 3)
                     } else if filter != .all {
-                        Button("Show all tasks") { filter = .all }.buttonStyle(.link).font(.caption)
+                        Button("Show all tasks") { filter = .all }.buttonStyle(.link).font(StackType.caption)
                     }
                 }.padding(.vertical, 18).padding(.horizontal, 2).frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -227,18 +229,18 @@ struct ProjectDashboardView: View {
             panelHeading("Your agents", action: "Manage") { model.section = .integrations }
             if model.accounts.isEmpty {
                 Text(model.accountError == nil ? "Detect installed agents to get started." : "Agent status unavailable.")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.system(size: 12)).foregroundStyle(Palette.secondary)
                 Button("Detect agents") { Task { await model.refreshAccounts() } }.controlSize(.small)
             } else {
                 ForEach(model.accounts) { account in
                     HStack(spacing: 10) {
-                        Image(systemName: "terminal").font(.system(size: 17, weight: .regular)).foregroundStyle(.secondary)
+                        Image(systemName: "terminal").font(.system(size: 17, weight: .regular)).foregroundStyle(Palette.secondary)
                             .frame(width: 28, height: 32)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(account.name).font(.system(size: 12, weight: .medium))
                             Label(account.installed ? (account.signedIn ? "Signed in" : "Sign in required") : "Not installed",
                                   systemImage: account.installed && account.signedIn ? "checkmark.circle.fill" : "circle")
-                                .font(.system(size: 10)).foregroundStyle(account.installed && account.signedIn ? Color.green : .secondary)
+                                .font(.system(size: 12)).foregroundStyle(account.installed && account.signedIn ? Color.green : .secondary)
                         }
                         Spacer(minLength: 0)
                         Button {
@@ -246,7 +248,7 @@ struct ProjectDashboardView: View {
                                 model.section = .terminal
                                 Task { await model.terminalWorkspace.launch(account.id, model: model) }
                             } else { model.section = .integrations }
-                        } label: { Image(systemName: "arrow.up.right").font(.system(size: 11, weight: .medium)).frame(width: 24, height: 24).contentShape(Rectangle()) }
+                        } label: { Image(systemName: "arrow.up.right").font(.system(size: 12, weight: .medium)).frame(width: 24, height: 24).contentShape(Rectangle()) }
                             .buttonStyle(.borderless)
                             .disabled(model.terminalWorkspace.launching)
                             .accessibilityLabel(account.installed && account.signedIn ? "Open \(account.name) terminal" : "Set up \(account.name)")
@@ -261,8 +263,8 @@ struct ProjectDashboardView: View {
                     Label("Open terminal", systemImage: "apple.terminal")
                     Spacer()
                     Text("⌘⇧T").foregroundStyle(.tertiary)
-                }.font(.system(size: 11)).contentShape(Rectangle())
-            }.buttonStyle(.plain).foregroundStyle(.secondary)
+                }.font(.system(size: 12)).contentShape(Rectangle())
+            }.buttonStyle(.plain).foregroundStyle(Palette.secondary)
         }
         .padding(16).background(Palette.canvas, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Palette.line, lineWidth: 1))
@@ -274,14 +276,14 @@ struct ProjectDashboardView: View {
             if let knowledge {
                 if knowledge.total > 0 {
                     Text("\(knowledge.sources.reduce(0) { $0 + $1.count }.formatted()) files imported")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.system(size: 12)).foregroundStyle(Palette.secondary)
                     ForEach(knowledge.sources.sorted { $0.count > $1.count }.prefix(4)) { source in
                         VStack(spacing: 6) {
                             HStack {
                                 Text(source.displayName).lineLimit(1)
                                 Spacer()
                                 Text(source.count.formatted()).monospacedDigit()
-                            }.font(.system(size: 11)).foregroundStyle(.secondary)
+                            }.font(.system(size: 12)).foregroundStyle(Palette.secondary)
                             GeometryReader { size in
                                 Capsule().fill(Palette.line)
                                 Capsule().fill(Palette.accent.opacity(0.6))
@@ -290,25 +292,25 @@ struct ProjectDashboardView: View {
                         }.accessibilityElement(children: .combine)
                     }
                     if knowledge.sources.count > 4 {
-                        Text("+\(knowledge.sources.count - 4) more sources").font(.system(size: 11)).foregroundStyle(.secondary)
+                        Text("+\(knowledge.sources.count - 4) more sources").font(.system(size: 12)).foregroundStyle(Palette.secondary)
                     }
                 } else {
                     Text("Bring your existing memories and rules into this project.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(.system(size: 12)).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 Text(loading ? "Reading project knowledge…" : "Knowledge status unavailable")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.system(size: 12)).foregroundStyle(Palette.secondary)
             }
             Button("Import from another tool", systemImage: "square.and.arrow.down") { model.section = .integrations }
-                .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.accent)
+                .buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.link)
             Divider()
             Button { model.section = .skills } label: {
                 HStack {
                     Label("Installed skills", systemImage: "sparkles")
                     Spacer()
                     Text(stack.map { String($0.skills.count) } ?? "—").fontWeight(.semibold).monospacedDigit()
-                    Image(systemName: "chevron.right").font(.system(size: 9))
+                    Image(systemName: "chevron.right").font(.system(size: 12))
                 }.font(.system(size: 12)).contentShape(Rectangle())
             }.buttonStyle(.plain)
         }
@@ -317,7 +319,7 @@ struct ProjectDashboardView: View {
     @ViewBuilder private var projectSetup: some View {
         if let stack, !stack.initialized || stack.installed.isEmpty {
             Button("Finish project setup", systemImage: "arrow.right") { model.showingOnboarding = true }
-                .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.accent)
+                .buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.link)
                 .help("Install project adapters to share instructions, skills and memory with your agents")
         }
     }
@@ -326,7 +328,7 @@ struct ProjectDashboardView: View {
         HStack {
             Text(title).font(.system(size: 13, weight: .semibold))
             Spacer(minLength: 4)
-            Button(action, action: perform).buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
+            Button(action, action: perform).buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Palette.secondary)
         }
     }
 
@@ -404,9 +406,9 @@ private struct DashboardTaskRow: View {
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 7) { metadata; Text("·"); Text(date) }
                         HStack(spacing: 7) { metadata }
-                    }.font(.system(size: 10)).foregroundStyle(.secondary)
+                    }.font(.system(size: 12)).foregroundStyle(Palette.secondary)
                 }.frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(.tertiary).padding(.top, 4)
+                Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(.tertiary).padding(.top, 4)
             }.padding(.vertical, 14).padding(.horizontal, 7)
                 .background(hovering ? Palette.line.opacity(0.55) : .clear, in: RoundedRectangle(cornerRadius: 6))
                 .contentShape(Rectangle())
@@ -429,7 +431,7 @@ private struct DashboardDiagnostics: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Project diagnostics").font(.headline)
+                Text("Project diagnostics").font(StackType.heading)
                 Spacer()
                 Button("Done") { dismiss() }.keyboardShortcut(.cancelAction)
             }.padding(16)
@@ -450,12 +452,12 @@ private struct DashboardDiagnostics: View {
 
 private struct DomainState: View {
     let status: String
-    private var color: Color { status == "pass" ? .green : ["warn", "fail"].contains(status) ? Palette.accent : .secondary }
+    private var color: Color { status == "pass" ? .green : ["warn", "fail"].contains(status) ? Palette.link : Palette.secondary }
     private var label: String { ["pass": "Ready", "warn": "Review", "fail": "Attention"][status] ?? (status.isEmpty ? "—" : status.capitalized) }
     var body: some View {
         HStack(spacing: 6) {
             Circle().fill(color).frame(width: 5, height: 5)
-            Text(label).font(.caption)
+            Text(label).font(StackType.caption)
         }.accessibilityElement(children: .combine)
     }
 }
@@ -478,11 +480,11 @@ private struct DomainInspector: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(domain.name).font(.headline).lineLimit(2)
+                Text(domain.name).font(StackType.heading).lineLimit(2)
                 Spacer()
                 DomainState(status: domain.status)
             }.padding(16)
-            Text(domain.summary).font(.callout).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 12)
+            Text(domain.summary).font(StackType.detail).foregroundStyle(Palette.secondary).padding(.horizontal, 16).padding(.bottom, 12)
             HStack {
                 Button("Open \(destination.searchTitle)", systemImage: "arrow.up.right") { model.section = destination }
                 if domain.id.contains("harness") || domain.id.contains("trust") {
@@ -498,13 +500,13 @@ private struct DomainInspector: View {
                                 .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(item.label).font(.callout.weight(.medium))
-                                Text(item.summary).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                                Text(item.label).font(StackType.detail.weight(.medium))
+                                Text(item.summary).font(StackType.caption).foregroundStyle(Palette.secondary).lineLimit(3)
                             }
                         }.padding(.vertical, 12)
                         Divider()
                     }
-                    if domain.items.isEmpty { Text("No recorded details").foregroundStyle(.secondary).padding(.vertical, 12) }
+                    if domain.items.isEmpty { Text("No recorded details").foregroundStyle(Palette.secondary).padding(.vertical, 12) }
                 }.padding(.horizontal, 16)
             }
         }.frame(maxHeight: .infinity, alignment: .topLeading).background(Palette.surface.opacity(0.4)).id(domain.id)

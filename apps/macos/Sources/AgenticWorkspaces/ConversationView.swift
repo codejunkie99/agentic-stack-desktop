@@ -57,16 +57,16 @@ struct ConversationView: View {
                 agentIcon
                 VStack(alignment: .leading, spacing: 3) {
                     Text(agentName).font(.system(size: 14, weight: .semibold))
-                    Text(model.conversation?.title ?? model.selectedProfile?.role ?? "New conversation").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(model.conversation?.title ?? model.selectedProfile?.role ?? "New conversation").font(StackType.caption).foregroundStyle(Palette.secondary).lineLimit(1)
                 }
                 Spacer()
                 if model.accounts.contains(where: { $0.id == model.selectedAgent && $0.signedIn }) {
-                    Label("Connected", systemImage: "circle.fill").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Label("Connected", systemImage: "circle.fill").font(.system(size: 12)).foregroundStyle(Palette.secondary)
                 }
                 if let profile = model.selectedProfile {
                     Button("Edit agent", systemImage: "pencil") { model.editAgent(profile) }.labelStyle(.iconOnly).buttonStyle(.plain).help("Edit agent")
                 }
-                Toggle("Follow output", isOn: $follow).toggleStyle(.checkbox).font(.caption)
+                Toggle("Follow output", isOn: $follow).toggleStyle(.checkbox).font(StackType.caption)
                 Button("New work", systemImage: "square.and.pencil") { model.newConversation() }
                     .labelStyle(.iconOnly).buttonStyle(.plain).help("New work · ⌘N")
             }.padding(.horizontal, 24).frame(height: 54)
@@ -137,7 +137,7 @@ struct ConversationView: View {
 
     private var agentIcon: some View {
         Image(systemName: model.selectedProfileID != nil ? "person.crop.square" : model.selectedAgent == "codex" ? "terminal" : "sparkle")
-            .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.accent)
+            .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.link)
             .frame(width: 30, height: 30).background(Palette.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 9))
     }
 
@@ -145,12 +145,12 @@ struct ConversationView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(model.currentWork.map { "Continue \($0.title)" } ?? "What would you like to work on?").font(.system(size: 23, weight: .medium))
             Text(model.currentWork?.objective ?? "Talk to \(agentName) about \(model.selected?.name ?? "this project"). Continue here as the work develops.")
-                .font(.callout).foregroundStyle(.secondary)
+                .font(StackType.detail).foregroundStyle(Palette.secondary)
             HStack(spacing: 16) {
                 Button("Explore this project") { draft.wrappedValue = "Explain how this project is organized and suggest a useful next step."; inputFocused = true }
                 Button("Review changes") { draft.wrappedValue = "Review the current changes for bugs and missing checks. Explain your findings before changing files."; inputFocused = true }
-            }.buttonStyle(.plain).font(.caption).foregroundStyle(Palette.accent)
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 50).padding(.bottom, 24)
+            }.buttonStyle(.bordered).font(StackType.detail)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 32).padding(.bottom, 24)
     }
 
     private func exchange(_ run: AgentRun) -> some View {
@@ -166,10 +166,10 @@ struct ConversationView: View {
                 agentIcon
                 VStack(alignment: .leading, spacing: 11) {
                     HStack {
-                        Text(agentName).font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                        Text(agentName).font(StackType.caption.weight(.medium)).foregroundStyle(Palette.secondary)
                         if run.isActive {
-                            Text(run.statusLabel).font(.caption).foregroundStyle(.secondary)
-                            if let start = run.startedDate { Text(start, style: .timer).font(.caption).monospacedDigit().foregroundStyle(.tertiary) }
+                            Text(run.statusLabel).font(StackType.caption).foregroundStyle(Palette.secondary)
+                            if let start = run.startedDate { Text(start, style: .timer).font(StackType.caption).monospacedDigit().foregroundStyle(.tertiary) }
                         }
                     }
                     let text = run.isActive ? (run.liveOutput ?? "") : (run.output.isEmpty ? run.liveOutput ?? "" : run.output)
@@ -182,56 +182,56 @@ struct ConversationView: View {
                     if let activity = run.activity, !activity.isEmpty {
                         if run.isActive, let item = activity.last {
                             Label(item.title + " · " + item.status, systemImage: item.status == "running" ? "circle.dotted" : "checkmark.circle")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(StackType.caption).foregroundStyle(Palette.secondary)
                         } else {
                             DisclosureGroup("\(activity.count) activity updates") {
                                 ForEach(activity) { item in
-                                    HStack { Text(item.title); Spacer(); Text(item.status.capitalized).foregroundStyle(.secondary) }
-                                        .font(.caption).padding(.vertical, 3)
+                                    HStack { Text(item.title); Spacer(); Text(item.status.capitalized).foregroundStyle(Palette.secondary) }
+                                        .font(StackType.caption).padding(.vertical, 3)
                                 }
-                            }.font(.caption).foregroundStyle(.secondary)
+                            }.font(StackType.caption).foregroundStyle(Palette.secondary)
                         }
                     }
-                    if !run.error.isEmpty { Text(run.error).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
+                    if !run.error.isEmpty { Text(run.error).font(StackType.detail).foregroundStyle(.red).textSelection(.enabled) }
                     if !run.isActive && !["completed", "needs_review"].contains(run.status) {
-                        Text(run.statusLabel + " · any text above is partial output").font(.caption).foregroundStyle(.secondary)
+                        Text(run.statusLabel + " · any text above is partial output").font(StackType.caption).foregroundStyle(Palette.secondary)
                         Button("Edit and retry") { draft.wrappedValue = run.task; inputFocused = true }
-                            .buttonStyle(.plain).font(.caption).foregroundStyle(Palette.accent)
+                            .buttonStyle(.plain).font(StackType.caption).foregroundStyle(Palette.link)
                             .disabled(active != nil || !draft.wrappedValue.isEmpty)
                             .help(draft.wrappedValue.isEmpty ? "Restore this message to the composer" : "Keep or clear your current draft first")
                     }
                     Text(run.modelSummary)
-                        .font(.caption2).foregroundStyle(.tertiary).textSelection(.enabled)
+                        .font(StackType.caption).foregroundStyle(.tertiary).textSelection(.enabled)
                     if let refs = run.memoryRefs, !refs.isEmpty {
                         DisclosureGroup("\(refs.count) memory references") {
                             ForEach(refs) { ref in
-                                Text(ref.title).font(.caption.weight(.medium))
-                                Text(ref.origins.map { "\(userFacingPath($0.path)):\($0.line)" }.joined(separator: "\n")).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                                Text(ref.title).font(StackType.caption.weight(.medium))
+                                Text(ref.origins.map { "\(userFacingPath($0.path)):\($0.line)" }.joined(separator: "\n")).font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled)
                             }
-                        }.font(.caption)
+                        }.font(StackType.caption)
                     }
                     if let refs = run.conversationRefs, !refs.isEmpty {
                         DisclosureGroup("\(refs.count) attached conversation\(refs.count == 1 ? "" : "s")") {
                             ForEach(refs) { ref in
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(ref.agentName + " · " + ref.title).font(.caption.weight(.medium))
-                                    Text(userFacingPath(ref.origin)).font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
+                                    Text(ref.agentName + " · " + ref.title).font(StackType.caption.weight(.medium))
+                                    Text(userFacingPath(ref.origin)).font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled)
                                 }.padding(.vertical, 2)
                             }
-                        }.font(.caption)
+                        }.font(StackType.caption)
                     }
                     if let attachments = run.attachments, !attachments.isEmpty {
                         DisclosureGroup("\(attachments.count) attached file\(attachments.count == 1 ? "" : "s")") {
                             ForEach(attachments) { attachment in
                                 HStack(spacing: 7) {
-                                    Image(systemName: attachmentIcon(attachment.kind)).foregroundStyle(.secondary)
-                                    Text(attachment.name).font(.caption.weight(.medium)).lineLimit(1)
+                                    Image(systemName: attachmentIcon(attachment.kind)).foregroundStyle(Palette.secondary)
+                                    Text(attachment.name).font(StackType.caption.weight(.medium)).lineLimit(1)
                                     Spacer()
                                     Text(ByteCountFormatter.string(fromByteCount: Int64(attachment.size), countStyle: .file))
-                                        .font(.caption2).foregroundStyle(.secondary)
+                                        .font(StackType.caption).foregroundStyle(Palette.secondary)
                                 }.padding(.vertical, 2)
                             }
-                        }.font(.caption)
+                        }.font(StackType.caption)
                     }
                     if !run.isActive && !run.output.isEmpty {
                         HStack(spacing: 16) {
@@ -239,7 +239,7 @@ struct ConversationView: View {
                             Button("Save reference") {
                                 Task { if await model.perform("run.saveSource", ["id": run.id]) { model.section = .references } }
                             }.disabled(model.busy || !["completed", "needs_review"].contains(run.status))
-                        }.buttonStyle(.plain).font(.caption).foregroundStyle(.secondary)
+                        }.buttonStyle(.plain).font(StackType.caption).foregroundStyle(Palette.secondary)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -251,17 +251,17 @@ struct ConversationView: View {
             if model.busy || model.preparingContext {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.mini)
-                    Text(model.preparingContext ? "Finding relevant context…" : "Preparing your request…").font(.caption).foregroundStyle(.secondary)
+                    Text(model.preparingContext ? "Finding relevant context…" : "Preparing your request…").font(StackType.caption).foregroundStyle(Palette.secondary)
                 }
             }
             if model.runs.contains(where: \.isActive) && active == nil {
                 HStack {
-                    Text("Another task is running in this project.").font(.caption).foregroundStyle(.secondary)
-                    Button("View task") { model.section = .runs }.buttonStyle(.plain).font(.caption)
+                    Text("Another task is running in this project.").font(StackType.caption).foregroundStyle(Palette.secondary)
+                    Button("View task") { model.section = .runs }.buttonStyle(.plain).font(StackType.caption)
                 }
             }
             if model.selected?.provider == "box" {
-                Text("For Box Cloud, start a bounded run from Tasks. Conversations use agents on this Mac or your connected server.").font(.caption).foregroundStyle(.secondary)
+                Text("For Box Cloud, start a bounded run from Tasks. Conversations use agents on this Mac or your connected server.").font(StackType.caption).foregroundStyle(Palette.secondary)
             }
             VStack(alignment: .leading, spacing: 10) {
                 if !model.selectedConversationReferences.isEmpty || !model.selectedConversationFiles.isEmpty {
@@ -277,31 +277,31 @@ struct ConversationView: View {
                     }.scrollIndicators(.hidden)
                 }
                 ZStack(alignment: .topLeading) {
-                    if draft.wrappedValue.isEmpty { Text(model.conversation == nil ? "What do you want to work on? Use @ to attach context." : "Continue with \(agentName)…").foregroundStyle(.secondary).padding(.horizontal, 5).padding(.top, 8).allowsHitTesting(false) }
-                    TextEditor(text: draft).scrollContentBackground(.hidden).scrollIndicators(.hidden).frame(height: 64).focused($inputFocused)
+                    if draft.wrappedValue.isEmpty { Text(model.conversation == nil ? "Describe what you want to work on…" : "Continue with \(agentName)…").foregroundStyle(Palette.secondary).padding(.horizontal, 5).padding(.top, 8).allowsHitTesting(false) }
+                    TextEditor(text: draft).scrollContentBackground(.hidden).scrollIndicators(.hidden).frame(minHeight: 72, maxHeight: 120).focused($inputFocused)
                         .disabled(model.isSearchPresented)
                         .accessibilityLabel("Message " + agentName)
 
-                }.font(.system(size: 13))
+                }.font(StackType.body)
                 HStack(spacing: 12) {
-                    Button { openAttachmentPicker() } label: { Image(systemName: "at") }
+                    Button { openAttachmentPicker() } label: { Image(systemName: "at").frame(width: 28, height: 28) }
                         .buttonStyle(.plain).help("Attach a conversation · type @")
                         .accessibilityLabel("Attach conversation")
                         .disabled(model.busy || model.selectedConversationReferences.count >= 5)
-                    Button { openFilePicker() } label: { Image(systemName: "paperclip") }
+                    Button { openFilePicker() } label: { Image(systemName: "paperclip").frame(width: 28, height: 28) }
                         .buttonStyle(.plain).help("Attach images, PDFs, audio, video, text, or code")
                         .accessibilityLabel("Attach files")
                         .disabled(model.busy || model.selectedConversationFiles.count >= 8)
-                    Button { showingOptions.toggle() } label: { Image(systemName: "slider.horizontal.3") }
-                        .buttonStyle(.plain).help("Conversation options")
+                    Button { showingOptions.toggle() } label: { Image(systemName: "slider.horizontal.3").frame(width: 28, height: 28) }
+                        .buttonStyle(.borderless).help("Conversation options").accessibilityLabel("Conversation options")
                         .popover(isPresented: $showingOptions) {
                             VStack(alignment: .leading, spacing: 16) {
-                                Text("Conversation options").font(.headline)
+                                Text("Conversation options").font(StackType.heading)
                                 Picker("Access", selection: Binding(get: { access }, set: { mode = $0 })) {
                                     Text("Read only").tag("read-only")
                                     Text("Edit project files").tag("workspace-write")
                                 }.disabled(model.conversation != nil || model.selectedProfile != nil)
-                                Text("Agent instructions and file access stay fixed for this conversation. Change the next message’s model using the model button beside the composer.").font(.caption).foregroundStyle(.secondary)
+                                Text("Agent instructions and file access stay fixed for this conversation. Change the next message’s model using the model button beside the composer.").font(StackType.caption).foregroundStyle(Palette.secondary)
                                 ContextOptionsView(model: model)
                             }.padding(20).frame(width: 330)
                         }
@@ -320,7 +320,7 @@ struct ConversationView: View {
                         Divider()
                         Button("Create custom agent…") { model.editAgent() }
                     } label: { Text(agentName).lineLimit(1) }
-                        .menuStyle(.borderlessButton).frame(maxWidth: 130, alignment: .leading).font(.caption)
+                        .menuStyle(.borderlessButton).frame(maxWidth: 130, alignment: .leading).font(StackType.caption)
                         .disabled(model.busy).help("Choose an agent or continue this work in a fresh session")
                     let modelKey = model.conversationDraftKey
                     InlineModelPicker(runner: model.selectedAgent, choices: model.availableModels,
@@ -338,7 +338,7 @@ struct ConversationView: View {
                         model.focusedMemory = nil; model.focusedContextReference = nil; model.contextInspectorVisible.toggle()
                     } label: {
                         Label(model.contextOptions.mode == "off" ? "Context off" : "Context", systemImage: "brain")
-                    }.buttonStyle(.plain).font(.caption).foregroundStyle(.secondary)
+                    }.buttonStyle(.plain).font(StackType.caption).foregroundStyle(Palette.secondary)
                         .help("Inspect selected context and sources")
                     Spacer(minLength: 6)
                     if let active {
@@ -346,7 +346,7 @@ struct ConversationView: View {
                     } else {
                         Button { Task { await model.sendMessage(draft.wrappedValue, mode: access, modelID: chosenModel, effort: chosenEffort, useMemory: model.contextOptions.mode != "off") } } label: {
                             Image(systemName: "arrow.up").font(.system(size: 14, weight: .semibold)).frame(width: 21, height: 24)
-                        }.buttonStyle(.borderedProminent).clipShape(Circle()).keyboardShortcut(.return, modifiers: .command)
+                        }.buttonStyle(.borderedProminent).tint(Palette.accent).clipShape(Circle()).keyboardShortcut(.return, modifiers: .command)
                             .help("Send message · ⌘Return").accessibilityLabel("Send message")
                             .disabled(model.conversationAttachmentRequest != nil || model.showingCommandPalette || model.preparingContext || (draft.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && model.selectedConversationFiles.isEmpty) || model.busy || model.runs.contains(where: \.isActive) || model.selected?.provider == "box")
                     }
@@ -359,31 +359,31 @@ struct ConversationView: View {
     private func attachedReferenceChip(_ reference: ConversationReference) -> some View {
         let label = reference.agentName + " · " + reference.title
         return HStack(spacing: 6) {
-            Image(systemName: "bubble.left.fill").font(.system(size: 9))
+            Image(systemName: "bubble.left.fill").font(.system(size: 12))
             Text(label).lineLimit(1)
             Button {
                 model.removeConversationReference(reference)
             } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
                 .buttonStyle(.plain).accessibilityLabel("Remove " + reference.title)
         }
-        .font(.caption).padding(.horizontal, 9).padding(.vertical, 6)
+        .font(StackType.caption).padding(.horizontal, 9).padding(.vertical, 6)
         .background(Palette.accent.opacity(0.11), in: Capsule())
     }
 
     private func attachedFileChip(_ attachment: ConversationFileAttachment) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: attachmentIcon(attachment.kind)).font(.system(size: 9))
+            Image(systemName: attachmentIcon(attachment.kind)).font(.system(size: 12))
             VStack(alignment: .leading, spacing: 1) {
                 Text(attachment.name).lineLimit(1)
                 Text(ByteCountFormatter.string(fromByteCount: Int64(attachment.size), countStyle: .file))
-                    .font(.system(size: 9)).foregroundStyle(.secondary)
+                    .font(.system(size: 12)).foregroundStyle(Palette.secondary)
             }
             Button {
                 model.removeConversationFile(attachment)
             } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
                 .buttonStyle(.plain).accessibilityLabel("Remove " + attachment.name)
         }
-        .font(.caption).padding(.horizontal, 9).padding(.vertical, 5)
+        .font(StackType.caption).padding(.horizontal, 9).padding(.vertical, 5)
         .background(Palette.line.opacity(0.55), in: Capsule())
     }
 

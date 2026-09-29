@@ -36,6 +36,7 @@ private struct MemoryGraphCamera {
 }
 
 struct KnowledgeGraphView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable var model: AppModel
     var mainCanvas = false
     var isActive = true
@@ -93,32 +94,32 @@ struct KnowledgeGraphView: View {
                             }
                         }
                         activeFilterChips
-                        if let error { Text(error).font(.callout).foregroundStyle(Palette.accent) }
+                        if let error { Text(error).font(StackType.detail).foregroundStyle(Palette.link) }
                     }.padding(22)
                     Divider()
                     if state.total == 0 && !loading {
                         VStack(alignment: .leading, spacing: 22) {
                             QuietEmpty(symbol: "point.3.connected.trianglepath.dotted", title: "Bring your agents’ memory together.",
                                        detail: "Import Claude Code, Codex, OpenCode, Cursor, and project memory. Search the notes, explore shared topics and keep every source attached.")
-                            Button("Scan available memory", systemImage: "tray.and.arrow.down") { showingImport = true }.buttonStyle(.borderedProminent)
+                            Button("Scan available memory", systemImage: "tray.and.arrow.down") { showingImport = true }.buttonStyle(.borderedProminent).tint(Palette.accent)
                             Text(model.isRemote ? "Imports read memory on the connected server." : "Imports stay on this Mac. Your original memory files stay unchanged.")
-                                .font(.callout).foregroundStyle(.secondary)
+                                .font(StackType.detail).foregroundStyle(Palette.secondary)
                         }.padding(40).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     } else {
                         HSplitView {
                             VStack(alignment: .leading, spacing: 0) {
                                 HStack {
-                                    Text("\(state.matched) of \(state.total) notes").font(.caption).foregroundStyle(.secondary)
+                                    Text("\(state.matched) of \(state.total) notes").font(StackType.caption).foregroundStyle(Palette.secondary)
                                     Spacer()
                                     if loading { ProgressView().controlSize(.small) }
                                 }.padding(14)
                                 List(selection: $selectedID) {
                                     ForEach(notes) { note in
                                         VStack(alignment: .leading, spacing: 7) {
-                                            Text(note.displayTitle).font(.callout.weight(.medium)).lineLimit(2)
-                                            Text(note.body).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                                            Text(note.displayTitle).font(StackType.detail.weight(.medium)).lineLimit(2)
+                                            Text(note.body).font(StackType.caption).foregroundStyle(Palette.secondary).lineLimit(3)
                                             Text(Array(Set(note.origins.map { sourceName($0.provider) })).sorted().joined(separator: " · "))
-                                                .font(.caption2).foregroundStyle(Palette.accent)
+                                                .font(StackType.caption).foregroundStyle(Palette.link)
                                         }.padding(.vertical, 7).tag(note.id)
                                     }
                                     if state.hasMore {
@@ -130,7 +131,7 @@ struct KnowledgeGraphView: View {
                                 HStack(spacing: 12) {
                                     Label(dimension == .spatial ? "Spatial knowledge map" : "Knowledge map",
                                           systemImage: dimension == .spatial ? "cube.transparent" : "point.3.connected.trianglepath.dotted")
-                                        .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                                        .font(StackType.caption.weight(.medium)).foregroundStyle(Palette.secondary)
                                     Spacer()
                                     Picker("Graph view", selection: $graphDimension) {
                                         ForEach(MemoryGraphDimension.allCases) { item in Text(item.rawValue).tag(item.rawValue) }
@@ -138,7 +139,7 @@ struct KnowledgeGraphView: View {
                                     .pickerStyle(.segmented).labelsHidden().frame(width: 104)
                                     .accessibilityLabel("Graph view")
                                     Button {
-                                        withAnimation(.snappy) { graphExpanded = true }
+                                        withAnimation(reduceMotion ? nil : .snappy) { graphExpanded = true }
                                     } label: {
                                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                                     }
@@ -156,7 +157,7 @@ struct KnowledgeGraphView: View {
                                     Text(dimension == .spatial
                                          ? "\(min(notes.count, 40)) visible nodes · drag to orbit · pinch to zoom"
                                          : "\(min(notes.count, 40)) visible nodes · links show original sources and shared topics")
-                                        .font(.caption2).foregroundStyle(.secondary)
+                                        .font(StackType.caption).foregroundStyle(Palette.secondary)
                                     Spacer()
                                 }.padding(.horizontal, 20).padding(.bottom, 12)
                                 Divider()
@@ -173,7 +174,7 @@ struct KnowledgeGraphView: View {
                 }
             }
         }
-        .animation(.snappy, value: graphExpanded)
+        .animation(reduceMotion ? nil : .snappy, value: graphExpanded)
         .task(id: graphRequestKey) {
             do { try await Task.sleep(for: .milliseconds(220)) } catch { return }
             await reload()
@@ -216,13 +217,13 @@ struct KnowledgeGraphView: View {
     }
     private var browseSearch: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
             TextField("Search across your agent memories", text: $query).textFieldStyle(.plain)
         }.frame(minWidth: 190)
     }
     private var importMemoryButton: some View {
         Button("Import memory…", systemImage: "square.and.arrow.down") { showingImport = true }
-            .buttonStyle(.borderedProminent).fixedSize()
+            .buttonStyle(.borderedProminent).tint(Palette.accent).fixedSize()
     }
     private var knowledgeSearch: some View {
         Button {
@@ -233,7 +234,11 @@ struct KnowledgeGraphView: View {
                 Image(systemName: "magnifyingglass")
                 Text("Search your knowledge").lineLimit(1)
                 Spacer(minLength: 0)
-            }.foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }.foregroundStyle(Palette.secondary).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        .padding(.horizontal, 10).padding(.vertical, 8)
+                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.line))
+                .frame(minWidth: 200)
         }.buttonStyle(.plain).accessibilityLabel("Search knowledge graph")
     }
     private var graphTools: some View {
@@ -242,10 +247,10 @@ struct KnowledgeGraphView: View {
                 ForEach(MemoryGraphDimension.allCases) { item in Text(item.rawValue).tag(item.rawValue) }
             }.pickerStyle(.segmented).labelsHidden().frame(width: 90).accessibilityLabel("Graph view")
             Button { showingImport = true } label: { Image(systemName: "square.and.arrow.down") }
-                .buttonStyle(.borderless).help("Import memory").accessibilityLabel("Import memory")
+                .buttonStyle(.borderless).frame(width: 28, height: 28).help("Import memory").accessibilityLabel("Import memory")
             Button { model.graphFullPage.toggle() } label: {
                 Image(systemName: model.graphFullPage ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-            }.buttonStyle(.borderless).help(model.graphFullPage ? "Exit full page" : "Open graph full page")
+            }.buttonStyle(.borderless).frame(width: 28, height: 28).help(model.graphFullPage ? "Exit full page" : "Open graph full page")
                 .accessibilityLabel(model.graphFullPage ? "Exit full page" : "Open graph full page")
         }.fixedSize()
     }
@@ -267,7 +272,7 @@ struct KnowledgeGraphView: View {
                 Label(title, systemImage: symbol).lineLimit(1).truncationMode(.middle).frame(maxWidth: 220)
                 Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
             }
-        }.font(.caption).buttonStyle(.bordered).controlSize(.small).accessibilityLabel("Clear filter \(title)").help(title)
+        }.font(StackType.caption).buttonStyle(.bordered).controlSize(.small).accessibilityLabel("Clear filter \(title)").help(title)
     }
     private func openFilters() {
         guard let wid = model.selectedID, model.hostReady else { return }
@@ -299,13 +304,13 @@ struct KnowledgeGraphView: View {
                                  dimension: dimension, camera: $graphCamera, highlightedIDs: model.contextReferenceIDs)
                 if notes.isEmpty && !loading {
                     VStack(spacing: 14) {
-                        Image(systemName: "point.3.connected.trianglepath.dotted").font(.system(size: 32, weight: .light)).foregroundStyle(Palette.accent)
+                        Image(systemName: "point.3.connected.trianglepath.dotted").font(.system(size: 32, weight: .light)).foregroundStyle(Palette.link)
                         Text(state.total == 0 ? "Your knowledge, connected." : "No matching memories").font(.title2.weight(.medium))
                         Text(state.total == 0 ? "Bring together memories from your coding tools. Every node keeps its source." : "Try another search or clear the source and topic filters.")
-                            .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 330)
+                            .font(StackType.detail).foregroundStyle(Palette.secondary).multilineTextAlignment(.center).frame(maxWidth: 330)
                         if state.total == 0 {
-                            Button("Import memory", systemImage: "square.and.arrow.down") { showingImport = true }.buttonStyle(.borderedProminent)
-                            Text("Or start new work below.").font(.caption).foregroundStyle(.secondary)
+                            Button("Import memory", systemImage: "square.and.arrow.down") { showingImport = true }.buttonStyle(.borderedProminent).tint(Palette.accent)
+                            Text("Or start new work below.").font(StackType.caption).foregroundStyle(Palette.secondary)
                         } else { Button("Clear filters") { query = ""; provider = ""; topic = "" } }
                     }.padding(28).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                 }
@@ -321,7 +326,7 @@ struct KnowledgeGraphView: View {
                 }
                 Spacer(minLength: 0)
                 Button("Browse memory") { model.section = .memoryBrowse }.buttonStyle(.plain)
-            }.font(.caption2).foregroundStyle(.secondary).padding(.horizontal, 18).padding(.vertical, 9)
+            }.font(StackType.caption).monospacedDigit().foregroundStyle(Palette.secondary).padding(.horizontal, 18).padding(.vertical, 9)
         }
         .onExitCommand { model.graphFullPage = false }
     }
@@ -331,9 +336,9 @@ struct KnowledgeGraphView: View {
             HStack(spacing: 14) {
                 Label(dimension == .spatial ? "Spatial knowledge map" : "Knowledge map",
                       systemImage: dimension == .spatial ? "cube.transparent" : "point.3.connected.trianglepath.dotted")
-                    .font(.headline)
+                    .font(StackType.heading)
                 Text("\(min(notes.count, 40)) visible nodes")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(StackType.caption).foregroundStyle(Palette.secondary)
                 Spacer()
                 filterButton
                 Picker("Graph view", selection: $graphDimension) {
@@ -342,7 +347,7 @@ struct KnowledgeGraphView: View {
                 .pickerStyle(.segmented).labelsHidden().frame(width: 104)
                 .accessibilityLabel("Graph view")
                 Button("Exit full page", systemImage: "arrow.down.right.and.arrow.up.left") {
-                    withAnimation(.snappy) { graphExpanded = false }
+                    withAnimation(reduceMotion ? nil : .snappy) { graphExpanded = false }
                 }
                 .buttonStyle(.bordered)
                 .keyboardShortcut(.escape, modifiers: [])
@@ -357,21 +362,21 @@ struct KnowledgeGraphView: View {
                 if let selected {
                     Image(systemName: "circle.fill")
                         .font(.system(size: 7)).foregroundStyle(sourceColor(selected.origins.first?.provider ?? "stack"))
-                    Text(selected.displayTitle).font(.callout.weight(.medium)).lineLimit(1)
+                    Text(selected.displayTitle).font(StackType.detail.weight(.medium)).lineLimit(1)
                     Spacer()
                     Button("View details", systemImage: "sidebar.right") {
-                        withAnimation(.snappy) { graphExpanded = false }
+                        withAnimation(reduceMotion ? nil : .snappy) { graphExpanded = false }
                     }
                     .buttonStyle(.borderless)
                 } else {
-                    Text("Select a memory to inspect it.").font(.callout).foregroundStyle(.secondary)
+                    Text("Select a memory to inspect it.").font(StackType.detail).foregroundStyle(Palette.secondary)
                     Spacer()
                 }
             }
             .padding(.horizontal, 18).frame(height: 44)
         }
         .background(Palette.canvas)
-        .onExitCommand { withAnimation(.snappy) { graphExpanded = false } }
+        .onExitCommand { withAnimation(reduceMotion ? nil : .snappy) { graphExpanded = false } }
     }
 
     private func detail(_ note: GraphNote) -> some View {
@@ -390,23 +395,23 @@ struct KnowledgeGraphView: View {
                 Text(note.body).font(.system(.body, design: .default)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                 if let reason = note.filterReason, !reason.isEmpty {
                     Label(reason + " Shown in All imported; excluded from automatic task retrieval.", systemImage: "line.3.horizontal.decrease.circle")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(StackType.caption).foregroundStyle(Palette.secondary)
                 }
                 if !note.topics.isEmpty {
-                    Text("Mentions: " + note.topics.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                    Text("Mentions: " + note.topics.joined(separator: " · ")).font(StackType.caption).foregroundStyle(Palette.secondary)
                 }
                 Divider()
-                Text("Provenance").font(.headline)
-                if note.displayTitle != note.title { Text(note.title).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
+                Text("Provenance").font(StackType.heading)
+                if note.displayTitle != note.title { Text(note.title).font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled) }
                 ForEach(Array(note.origins.enumerated()), id: \.offset) { _, origin in
                     VStack(alignment: .leading, spacing: 5) {
-                        Label(sourceName(origin.provider), systemImage: "doc.text").font(.callout.weight(.medium))
+                        Label(sourceName(origin.provider), systemImage: "doc.text").font(StackType.detail.weight(.medium))
                         Text("\(userFacingPath(origin.path)):\(origin.line)").font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                        Text("Imported \(origin.importedAt)").font(.caption2).foregroundStyle(.secondary)
+                        Text("Imported \(origin.importedAt)").font(StackType.caption).foregroundStyle(Palette.secondary)
                     }
                 }
                 Text("Imported reference. A connection means a shared source or a literal topic mention; it does not establish that a claim is current or correct.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(StackType.caption).foregroundStyle(Palette.secondary)
             }.padding(24)
         }
     }
@@ -462,6 +467,7 @@ private struct ProjectedGraphPoint {
 }
 
 private struct SpatialMemoryGraphScene: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let notes: [GraphNote]
     @Binding var selectedID: String?
     let topic: String
@@ -476,7 +482,7 @@ private struct SpatialMemoryGraphScene: View {
         GeometryReader { geometry in
             let activeYaw = camera.yaw + Double(orbitDelta.width) * 0.008
             let activePitch = max(-1.15, min(1.15, camera.pitch - Double(orbitDelta.height) * 0.008))
-            let viewportScale = max(1, min(1.38, min(geometry.size.width / 720, geometry.size.height / 400)))
+            let viewportScale = max(0.45, min(1.15, min(geometry.size.width / 640, geometry.size.height / 360)))
             let activeZoom = max(0.62, min(2.4, camera.zoom * magnification * viewportScale))
             let world = worldPositions(size: geometry.size)
             let projectedHubs = world.hubs.mapValues {
@@ -490,8 +496,7 @@ private struct SpatialMemoryGraphScene: View {
             }
 
             ZStack {
-                LinearGradient(colors: [Palette.canvas, Palette.surface.opacity(0.88), Palette.accent.opacity(0.08)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                Palette.canvas
                 Canvas { context, size in
                     let inset = min(size.width, size.height) * 0.16
                     let orbitRect = CGRect(x: inset, y: size.height * 0.27,
@@ -535,7 +540,7 @@ private struct SpatialMemoryGraphScene: View {
                             Image(systemName: "circle.hexagongrid.fill")
                                 .font(.system(size: 23)).foregroundStyle(sourceColor(source))
                                 .shadow(color: sourceColor(source).opacity(0.55), radius: 8)
-                            Text(sourceName(source)).font(.caption2.weight(.semibold)).lineLimit(1)
+                            Text(sourceName(source)).font(StackType.caption.weight(.semibold)).lineLimit(1)
                         }
                         .padding(.horizontal, 8).padding(.vertical, 6)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 9))
@@ -567,7 +572,7 @@ private struct SpatialMemoryGraphScene: View {
                         .accessibilityLabel("Memory: \(note.displayTitle)")
 
                         if isSelected {
-                            Text(note.displayTitle).font(.caption2.weight(.semibold)).lineLimit(2).frame(maxWidth: 190)
+                            Text(note.displayTitle).font(StackType.caption.weight(.semibold)).lineLimit(2).frame(maxWidth: 190)
                                 .padding(.horizontal, 8).padding(.vertical, 6)
                                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 7))
                                 .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.accent.opacity(0.24)))
@@ -579,7 +584,7 @@ private struct SpatialMemoryGraphScene: View {
                 }
 
                 if !topic.isEmpty {
-                    Text(topic).font(.caption.weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 7)
+                    Text(topic).font(StackType.caption.weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 7)
                         .background(.regularMaterial, in: Capsule()).overlay(Capsule().stroke(Palette.accent.opacity(0.25)))
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 }
@@ -587,14 +592,14 @@ private struct SpatialMemoryGraphScene: View {
                 VStack {
                     Spacer()
                     HStack(spacing: 8) {
-                        Label("Drag to orbit", systemImage: "rotate.3d").font(.caption2).foregroundStyle(.secondary)
+                        Label("Drag to orbit", systemImage: "rotate.3d").font(StackType.caption).foregroundStyle(Palette.secondary)
                         Spacer()
-                        Button { camera.zoom = max(0.62, camera.zoom - 0.16) } label: { Image(systemName: "minus.magnifyingglass") }
+                        Button { camera.zoom = max(0.62, camera.zoom - 0.16) } label: { Image(systemName: "minus.magnifyingglass").frame(width: 28, height: 28).contentShape(Rectangle()) }
                             .help("Zoom out")
                         Button {
-                            withAnimation(.snappy) { camera = .initial }
-                        } label: { Image(systemName: "scope") }.help("Reset 3D view")
-                        Button { camera.zoom = min(1.85, camera.zoom + 0.16) } label: { Image(systemName: "plus.magnifyingglass") }
+                            withAnimation(reduceMotion ? nil : .snappy) { camera = .initial }
+                        } label: { Image(systemName: "scope").frame(width: 28, height: 28).contentShape(Rectangle()) }.help("Reset 3D view").accessibilityLabel("Reset 3D view")
+                        Button { camera.zoom = min(1.85, camera.zoom + 0.16) } label: { Image(systemName: "plus.magnifyingglass").frame(width: 28, height: 28).contentShape(Rectangle()) }
                             .help("Zoom in")
                     }
                     .buttonStyle(.borderless).padding(.horizontal, 12).padding(.vertical, 8)
@@ -602,6 +607,14 @@ private struct SpatialMemoryGraphScene: View {
                 }
             }
             .contentShape(Rectangle())
+            .focusable()
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Knowledge graph")
+            .accessibilityHint("Use arrow keys to orbit.")
+            .onKeyPress(.leftArrow) { camera.yaw -= 0.12; return .handled }
+            .onKeyPress(.rightArrow) { camera.yaw += 0.12; return .handled }
+            .onKeyPress(.upArrow) { camera.pitch = min(1.15, camera.pitch + 0.12); return .handled }
+            .onKeyPress(.downArrow) { camera.pitch = max(-1.15, camera.pitch - 0.12); return .handled }
             .gesture(
                 DragGesture(minimumDistance: 2)
                     .updating($orbitDelta) { value, state, _ in state = value.translation }
@@ -704,7 +717,7 @@ private struct FlatMemoryGraphScene: View {
                     if let hub = hubs[source] {
                         VStack(spacing: 5) {
                             Image(systemName: "circle.hexagongrid.fill").font(.system(size: 25)).foregroundStyle(sourceColor(source))
-                            Text(sourceName(source)).font(.caption.weight(.semibold))
+                            Text(sourceName(source)).font(StackType.caption.weight(.semibold))
                         }.padding(8).background(Palette.canvas.opacity(0.9), in: RoundedRectangle(cornerRadius: 10)).position(hub)
                     }
                 }
@@ -717,7 +730,7 @@ private struct FlatMemoryGraphScene: View {
                                 .padding(8).contentShape(Circle())
                         }.buttonStyle(.plain).position(point).help(note.displayTitle).accessibilityLabel("Memory: \(note.displayTitle)")
                         if selectedID == note.id {
-                            Text(note.displayTitle).font(.caption2.weight(.medium)).lineLimit(2).frame(maxWidth: 180)
+                            Text(note.displayTitle).font(StackType.caption.weight(.medium)).lineLimit(2).frame(maxWidth: 180)
                                 .padding(6).background(Palette.canvas, in: RoundedRectangle(cornerRadius: 6))
                                 .position(x: max(100, min(geometry.size.width-100, point.x)), y: max(24, point.y-28))
                                 .allowsHitTesting(false)
@@ -725,7 +738,7 @@ private struct FlatMemoryGraphScene: View {
                     }
                 }
                 if !topic.isEmpty {
-                    Text(topic).font(.caption.weight(.medium)).padding(8).background(Palette.canvas, in: Capsule()).position(center)
+                    Text(topic).font(StackType.caption.weight(.medium)).padding(8).background(Palette.canvas, in: Capsule()).position(center)
                 }
             }
         }.background(Palette.surface.opacity(0.35)).clipped()
@@ -772,9 +785,9 @@ struct MemoryImportSheet: View {
                 if busy { ProgressView().controlSize(.small) }
             }
             Text(model.isRemote ? "Read memory on the connected server. Imported notes stay in that server’s knowledge graph." : "Read available memory on this Mac and copy selected notes into this project’s knowledge graph.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.secondary)
             HStack {
-                Text("Sources").font(.headline)
+                Text("Sources").font(StackType.heading)
                 Spacer()
                 Button("Select detected") { providers = detectedProviders(); preview = nil }
                 Button("Clear sources") { providers = []; preview = nil }
@@ -790,7 +803,7 @@ struct MemoryImportSheet: View {
             }.frame(height: 150).disabled(busy)
             if !providers.isDisjoint(with: ["claude-session", "codex-session", "cursor-session", "opencode-session"]) {
                 HStack {
-                    Text("Conversation batch \(sessionBatch + 1) · up to 25 recent sessions per agent").font(.caption)
+                    Text("Conversation batch \(sessionBatch + 1) · up to 25 recent sessions per agent").font(StackType.caption)
                     Spacer()
                     Button("Newer") { sessionBatch -= 1; preview = nil }.disabled(sessionBatch == 0)
                     Button("Older") { sessionBatch += 1; preview = nil }.disabled(sessionBatch >= 1000)
@@ -808,11 +821,11 @@ struct MemoryImportSheet: View {
                 }
                 Button(preview == nil ? "Scan memory" : "Scan again") { Task { await scan() } }.disabled(busy || (providers.isEmpty && folder.isEmpty))
             }.disabled(busy)
-            if let error { Text(error).font(.callout).foregroundStyle(Palette.accent) }
-            if let result { Label(result, systemImage: "checkmark.circle").foregroundStyle(.secondary) }
+            if let error { Text(error).font(StackType.detail).foregroundStyle(Palette.link) }
+            if let result { Label(result, systemImage: "checkmark.circle").foregroundStyle(Palette.secondary) }
             if let preview {
                 HStack {
-                    Text("\(preview.files.count) \(preview.files.count == 1 ? "file" : "files") · \(ByteCountFormatter.string(fromByteCount: Int64(preview.bytes), countStyle: .file))").font(.headline)
+                    Text("\(preview.files.count) \(preview.files.count == 1 ? "file" : "files") · \(ByteCountFormatter.string(fromByteCount: Int64(preview.bytes), countStyle: .file))").font(StackType.heading)
                     Spacer()
                     Button("Select all") { selected = Set(preview.files.map(\.id)) }
                     Button("Clear") { selected = [] }
@@ -825,10 +838,10 @@ struct MemoryImportSheet: View {
                                     if on { selected.insert(file.id) } else { selected.remove(file.id) }
                                 })).labelsHidden()
                                 VStack(alignment: .leading, spacing: 5) {
-                                    Text(file.title).font(.callout.weight(.medium))
-                                    Text("\(sourceName(file.provider)) · \(userFacingPath(file.path))").font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
-                                    DisclosureGroup("Preview text") { Text(file.excerpt).font(.caption).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
-                                    if file.redactedLines > 0 { Text("\(file.redactedLines) credential-like lines omitted").font(.caption2).foregroundStyle(Palette.accent) }
+                                    Text(file.title).font(StackType.detail.weight(.medium))
+                                    Text("\(sourceName(file.provider)) · \(userFacingPath(file.path))").font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled)
+                                    DisclosureGroup("Preview text") { Text(file.excerpt).font(StackType.caption).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
+                                    if file.redactedLines > 0 { Text("\(file.redactedLines) credential-like lines omitted").font(StackType.caption).foregroundStyle(Palette.link) }
                                 }
                             }
                             Divider()
@@ -837,24 +850,24 @@ struct MemoryImportSheet: View {
                 }.frame(maxWidth: .infinity).frame(height: 230)
                 if !preview.skipped.isEmpty {
                     DisclosureGroup("\(preview.skipped.count) import notices") {
-                        ScrollView { Text(preview.skipped.joined(separator: "\n")).font(.caption).frame(maxWidth: .infinity, alignment: .leading) }.frame(maxHeight: 90)
+                        ScrollView { Text(preview.skipped.joined(separator: "\n")).font(StackType.caption).frame(maxWidth: .infinity, alignment: .leading) }.frame(maxHeight: 90)
                     }
                 }
             } else {
                 Spacer(minLength: 0)
                 Text("Includes saved memory, portable rules, skills, and optional chats from Claude Code, Codex, OpenCode, and Cursor. Conversation imports keep visible user and final assistant text while excluding tool output and reasoning. Memory files are limited to 2 MB; sessions to 16 MB. Skipped files are reported.")
-                    .font(.callout).foregroundStyle(.secondary).padding(.vertical, 20)
+                    .font(StackType.detail).foregroundStyle(Palette.secondary).padding(.vertical, 20)
             }
             }.padding(22)
             }
             Divider()
             HStack {
-                Text("Originals stay unchanged. Imported text is reference material.").font(.caption).foregroundStyle(.secondary)
+                Text("Originals stay unchanged. Imported text is reference material.").font(StackType.caption).foregroundStyle(Palette.secondary)
                 Spacer()
                 Button(result == nil ? "Cancel" : "Done") { dismiss() }.keyboardShortcut(.cancelAction).disabled(busy)
                 if let preview {
                     Button("Import \(selected.count) \(selected.count == 1 ? "file" : "files")") { Task { await importFiles(preview) } }
-                        .buttonStyle(.borderedProminent).disabled(busy || selected.isEmpty)
+                        .buttonStyle(.borderedProminent).tint(Palette.accent).disabled(busy || selected.isEmpty)
                 }
             }.padding(16)
         }.frame(width: DesktopSizing.sheetWidth(820), height: DesktopSizing.sheetHeight(700)).interactiveDismissDisabled(busy)

@@ -53,7 +53,7 @@ struct ConversationSpotlightView: View {
             footer
         }
         .frame(maxWidth: 780, maxHeight: 640)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background { StackFrostedSurface().clipShape(RoundedRectangle(cornerRadius: 20)) }
         .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(.primary.opacity(0.1)) }
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.22), radius: 32, y: 16)
@@ -76,16 +76,16 @@ struct ConversationSpotlightView: View {
     private var searchHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label("Conversations", systemImage: "at").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                Label("Conversations", systemImage: "at").font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.secondary)
                 Spacer()
-                if !attachedIDs.isEmpty { Text("\(attachedIDs.count) of 5 attached").font(.caption).foregroundStyle(.secondary) }
+                if !attachedIDs.isEmpty { Text("\(attachedIDs.count) of 5 attached").font(StackType.caption).foregroundStyle(Palette.secondary) }
                 Button { onDismiss() } label: {
-                    Text("esc").font(.caption.monospaced()).foregroundStyle(.secondary).padding(5)
+                    Text("esc").font(StackType.caption.monospaced()).foregroundStyle(Palette.secondary).padding(5)
                         .background(.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 5))
                 }.buttonStyle(.plain).accessibilityLabel("Close conversation search")
             }
             HStack(spacing: 14) {
-                Image(systemName: "magnifyingglass").font(.system(size: 23, weight: .light)).foregroundStyle(.secondary)
+                Image(systemName: "magnifyingglass").font(.system(size: 23, weight: .light)).foregroundStyle(Palette.secondary)
                 NativeSpotlightField(text: $query, placeholder: "Search every connected conversation…",
                     accessibilityName: "Search conversations", focusRequest: focusRequest,
                     onSubmit: { if let reference = rows.first(where: { $0.id == selectedID }) { select(reference) } },
@@ -106,8 +106,8 @@ struct ConversationSpotlightView: View {
                     } label: {
                         Label(name, systemImage: symbol).font(.system(size: 12, weight: effectiveTool == value ? .semibold : .regular))
                             .padding(.horizontal, 10).padding(.vertical, 7)
-                            .background(effectiveTool == value ? Palette.accent.opacity(0.15) : .clear, in: Capsule())
-                            .foregroundStyle(effectiveTool == value ? Palette.accent : .secondary)
+                            .background(effectiveTool == value ? Palette.selection : .clear, in: RoundedRectangle(cornerRadius: 7))
+                            .foregroundStyle(effectiveTool == value ? Palette.link : Palette.secondary)
                     }.buttonStyle(.plain).accessibilityAddTraits(effectiveTool == value ? .isSelected : [])
                 }
                 Spacer(minLength: 0)
@@ -133,7 +133,7 @@ struct ConversationSpotlightView: View {
                 } label: { Label(roleName(roleFilter), systemImage: "person.2").lineLimit(1) }
                     .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Conversation role filter")
                 Spacer(minLength: 0)
-            }.font(.caption).foregroundStyle(.secondary)
+            }.font(StackType.caption).foregroundStyle(Palette.secondary)
         }.padding(.horizontal, 20).padding(.bottom, 15)
     }
 
@@ -145,33 +145,33 @@ struct ConversationSpotlightView: View {
                         Text(parsedQuery.query.isEmpty ? "ALL CONVERSATIONS" : "MATCHING CONVERSATIONS")
                         Spacer()
                         if loadedKey == searchKey { Text("\(total) found") }
-                    }.font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                    }.font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.secondary)
                         .padding(.horizontal, 12).padding(.vertical, 12)
                     ForEach(rows) { reference in resultRow(reference).id(reference.id) }
                     if rows.isEmpty && loading {
                         VStack(spacing: 12) {
                             ProgressView(parsedQuery.query.isEmpty ? "Scanning connected conversations…" : "Searching connected conversations…")
                             Text("The first scan can take a moment. Your draft stays here.")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(StackType.caption).foregroundStyle(Palette.secondary)
                         }.frame(maxWidth: .infinity).padding(.vertical, 48)
                     }
                     if rows.isEmpty && !loading && error.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "bubble.left.and.bubble.right").font(.system(size: 30, weight: .light))
-                            Text("No matching conversations").font(.callout.weight(.medium))
+                            Text("No matching conversations").font(StackType.detail.weight(.medium))
                             Text("Search by topic, title, model or project, or choose another tool.")
-                                .font(.caption).multilineTextAlignment(.center)
+                                .font(StackType.caption).multilineTextAlignment(.center)
                             if effectiveTool.isEmpty && parsedQuery.query.isEmpty {
                                 Text("Available conversations from Codex, Claude Code, Cursor and OpenCode appear here after those tools have saved chats on this host.")
-                                    .font(.caption).multilineTextAlignment(.center).frame(maxWidth: 440)
+                                    .font(StackType.caption).multilineTextAlignment(.center).frame(maxWidth: 440)
                             }
-                        }.foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 48)
+                        }.foregroundStyle(Palette.secondary).frame(maxWidth: .infinity).padding(.vertical, 48)
                     }
                     if !error.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(error).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                            Text(error).font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled)
                             Button("Retry") { loadMoreTask = Task { await loadPage(offset: rows.isEmpty ? 0 : nextOffset ?? 0) } }
-                                .buttonStyle(.plain).font(.caption).foregroundStyle(Palette.accent)
+                                .buttonStyle(.plain).font(StackType.caption).foregroundStyle(Palette.link)
                         }.padding(12)
                     }
                     if let offset = nextOffset, loadedKey == searchKey {
@@ -181,7 +181,7 @@ struct ConversationSpotlightView: View {
                             HStack {
                                 Spacer()
                                 if loading { ProgressView().controlSize(.small) }
-                                Text(loading ? "Loading conversations…" : "Load more conversations").font(.callout)
+                                Text(loading ? "Loading conversations…" : "Load more conversations").font(StackType.detail)
                                 Spacer()
                             }.padding(14)
                         }.buttonStyle(.plain).disabled(loading)
@@ -196,20 +196,20 @@ struct ConversationSpotlightView: View {
         return Button { select(reference) } label: {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: tools.first(where: { $0.0 == reference.agent })?.2 ?? "bubble.left")
-                    .font(.system(size: 18)).foregroundStyle(Palette.accent).frame(width: 36, height: 36)
+                    .font(.system(size: 18)).foregroundStyle(Palette.link).frame(width: 36, height: 36)
                     .background(Palette.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 8) {
                         Text(reference.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
                         Spacer(minLength: 2)
-                        Text(reference.agentName).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+                        Text(reference.agentName).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.secondary)
                     }
                     Text(SpotlightSearchRules.excerpt(reference.excerpt, query: parsedQuery.query, limit: 180))
-                        .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
-                    Text(details(reference)).font(.system(size: 10)).foregroundStyle(.tertiary).lineLimit(1)
+                        .font(.system(size: 12)).foregroundStyle(Palette.secondary).lineLimit(2)
+                    Text(details(reference)).font(.system(size: 12)).foregroundStyle(.tertiary).lineLimit(1)
                 }
-                if attached { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.accent).accessibilityLabel("Already attached") }
-                else if selectedID == reference.id { Image(systemName: "return").font(.caption).foregroundStyle(.secondary).padding(.top, 4) }
+                if attached { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.link).accessibilityLabel("Already attached") }
+                else if selectedID == reference.id { Image(systemName: "return").font(StackType.caption).foregroundStyle(Palette.secondary).padding(.top, 4) }
             }.padding(.horizontal, 12).padding(.vertical, 11)
                 .background(selectedID == reference.id ? Palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 10))
                 .contentShape(Rectangle())
@@ -224,7 +224,7 @@ struct ConversationSpotlightView: View {
                 Text("↑ ↓  Navigate"); Text("↵  Attach"); Text("esc  Back to draft")
                 Spacer()
                 Text(attachedIDs.count >= 5 ? "Remove an attachment to add another" : "Attach up to 5 conversations")
-            }.font(.system(size: 10)).foregroundStyle(.secondary).padding(.horizontal, 24).padding(.vertical, 14)
+            }.font(.system(size: 12)).foregroundStyle(Palette.secondary).padding(.horizontal, 24).padding(.vertical, 14)
         }
     }
 

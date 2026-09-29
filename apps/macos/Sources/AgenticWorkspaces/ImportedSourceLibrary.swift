@@ -52,31 +52,31 @@ struct ImportedSourceLibrary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(kind == "lessons" ? "Imported lesson files" : "Imported sources").font(.headline)
+                Text(kind == "lessons" ? "Imported lesson files" : "Imported sources").font(StackType.heading)
                 Text(kind == "lessons"
                      ? "Original lesson and learning files from connected tools. Their text and review status remain separate from this project's lesson queue."
                      : "Read the original stored material behind your graph, including its source and review status.")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(StackType.detail).foregroundStyle(Palette.secondary)
             }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) { searchField; providerPicker }
                 VStack(alignment: .leading, spacing: 10) { searchField; providerPicker }
             }
             HStack {
-                if let total { Text("\(sources.count) of \(total) source files").font(.caption).foregroundStyle(.secondary) }
+                if let total { Text("\(sources.count) of \(total) source files").font(StackType.caption).foregroundStyle(Palette.secondary) }
                 if loading { ProgressView().controlSize(.small) }
                 Spacer()
                 Button("Refresh", systemImage: "arrow.clockwise") { Task { await load(reset: true) } }
-                    .font(.caption).buttonStyle(.plain).disabled(loading || !model.hostReady)
+                    .font(StackType.caption).buttonStyle(.plain).disabled(loading || !model.hostReady)
             }
-            if let error { Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
+            if let error { Text(error).font(StackType.detail).foregroundStyle(.red).textSelection(.enabled) }
             if !model.hostReady {
-                Text("Waiting for the host connection…").font(.callout).foregroundStyle(.secondary)
+                Text("Waiting for the host connection…").font(StackType.detail).foregroundStyle(Palette.secondary)
             } else if sources.isEmpty && !loading && error == nil {
                 Text(kind == "lessons"
                      ? "No imported lesson files match. Lessons you stage or accept in this project appear above."
                      : "No imported sources match. Import memories from Browse or try another search.")
-                    .font(.callout).foregroundStyle(.secondary).padding(.vertical, 16)
+                    .font(StackType.detail).foregroundStyle(Palette.secondary).padding(.vertical, 16)
             }
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(sources) { source in
@@ -85,14 +85,14 @@ struct ImportedSourceLibrary: View {
                         selection = ImportedSourceSelection(source: source, workspaceID: wid, host: model.terminalHost, targetKey: model.handoverPreviewKey)
                     } label: {
                         HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: "doc.text").font(.title3).foregroundStyle(Palette.accent).frame(width: 22)
+                            Image(systemName: "doc.text").font(.title3).foregroundStyle(Palette.link).frame(width: 22)
                             VStack(alignment: .leading, spacing: 5) {
-                                Text(source.title).font(.callout.weight(.semibold)).foregroundStyle(.primary).lineLimit(2)
-                                Text("\(source.provider) · \(source.noteCount) stored notes").font(.caption).foregroundStyle(.secondary)
-                                Text(userFacingPath(source.path)).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                                Text(source.title).font(StackType.detail.weight(.semibold)).foregroundStyle(.primary).lineLimit(2)
+                                Text("\(source.provider) · \(source.noteCount) stored notes").font(StackType.caption).foregroundStyle(Palette.secondary)
+                                Text(userFacingPath(source.path)).font(StackType.caption).foregroundStyle(Palette.secondary).lineLimit(2)
                             }
                             Spacer(minLength: 8)
-                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                            Image(systemName: "chevron.right").font(StackType.caption).foregroundStyle(Palette.secondary)
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 15).contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityLabel("Read imported source \(source.title)")
                     Divider()
@@ -174,15 +174,15 @@ private struct ImportedSourceDetail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(source.title).font(.title2.weight(.semibold)).lineLimit(3)
-            Text("\(source.provider) · Imported \(source.importedAt)").font(.caption).foregroundStyle(.secondary)
+            Text("\(source.provider) · Imported \(source.importedAt)").font(StackType.caption).foregroundStyle(Palette.secondary)
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(userFacingPath(source.path)).font(.caption).textSelection(.enabled)
-                    if let total { Text("\(notes.count) of \(total) stored notes").font(.callout.weight(.medium)) }
+                    Text(userFacingPath(source.path)).font(StackType.caption).textSelection(.enabled)
+                    if let total { Text("\(notes.count) of \(total) stored notes").font(StackType.detail.weight(.medium)) }
                     ForEach(notes) { note in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(alignment: .top) {
-                                Text(note.displayTitle).font(.headline).textSelection(.enabled)
+                                Text(note.displayTitle).font(StackType.heading).textSelection(.enabled)
                                 Spacer()
                                 StatusLabel(title: (note.status ?? "reference").capitalized)
                             }
@@ -194,22 +194,22 @@ private struct ImportedSourceDetail: View {
                             }
                             ForEach(note.origins, id: \.self) { origin in
                                 Text("\(origin.provider) · \(userFacingPath(origin.path)):\(origin.line)")
-                                    .font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
+                                    .font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled)
                             }
                             DisclosureGroup("Evidence details") {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("Note ID · " + note.id)
                                     Text("Source ID · " + source.id)
                                     Text("Source SHA-256 · " + source.digest)
-                                }.font(.system(size: 10, design: .monospaced)).textSelection(.enabled)
-                            }.font(.caption)
+                                }.font(.system(size: 12, design: .monospaced)).textSelection(.enabled)
+                            }.font(StackType.caption)
                             if let review = note.review {
-                                if let reason = review.reason { Text(reason).font(.callout).textSelection(.enabled) }
-                                if let replacement = review.supersededBy { Text("Replaced by note \(replacement)").font(.caption).textSelection(.enabled) }
+                                if let reason = review.reason { Text(reason).font(StackType.detail).textSelection(.enabled) }
+                                if let replacement = review.supersededBy { Text("Replaced by note \(replacement)").font(StackType.caption).textSelection(.enabled) }
                                 if let history = review.history, !history.isEmpty {
                                     DisclosureGroup("Review history") {
                                         ForEach(Array(history.enumerated()), id: \.offset) { _, event in
-                                            Text("\(event.updatedAt) · \(event.status) · \(event.reason)").font(.caption).textSelection(.enabled)
+                                            Text("\(event.updatedAt) · \(event.status) · \(event.reason)").font(StackType.caption).textSelection(.enabled)
                                         }
                                     }
                                 }
@@ -217,7 +217,7 @@ private struct ImportedSourceDetail: View {
                         }.padding(16).background(Palette.surface, in: RoundedRectangle(cornerRadius: 10))
                     }
                     if loading { ProgressView("Reading stored notes…") }
-                    if let error { Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
+                    if let error { Text(error).font(StackType.detail).foregroundStyle(.red).textSelection(.enabled) }
                     if nextOffset != nil { Button("Load more stored notes") { Task { await load() } }.disabled(loading) }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }

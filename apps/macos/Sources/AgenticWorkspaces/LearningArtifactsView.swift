@@ -51,71 +51,71 @@ struct LearningArtifactsView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Training, evaluation, and metrics").font(.headline)
-                    Text("Preview the inputs and files before generating an export.").font(.callout).foregroundStyle(.secondary)
+                    Text("Training, evaluation, and metrics").font(StackType.heading)
+                    Text("Preview the inputs and files before generating an export.").font(StackType.detail).foregroundStyle(Palette.secondary)
                 }
                 Spacer()
                 Button { Task { await reload() } } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.plain).help("Refresh learning artifacts").disabled(busy || snapshotLoading || !model.hostReady)
             }
             if snapshotLoading { ProgressView("Reading export inputs and files…").controlSize(.small) }
-            if !model.hostReady { Text("Waiting for the host connection…").font(.caption).foregroundStyle(.secondary) }
+            if !model.hostReady { Text("Waiting for the host connection…").font(StackType.caption).foregroundStyle(Palette.secondary) }
             if let snapshot {
                 Text("\(snapshot.counts["eligibleRuns"] ?? 0) eligible desktop runs · \(snapshot.counts["approvedFileRuns"] ?? 0) approved file records · \(snapshot.counts["metricsRecords"] ?? 0) metric records")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(StackType.caption).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            ForEach(snapshot?.issues ?? [], id: \.self) { issue in Text(issue).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
+            ForEach(snapshot?.issues ?? [], id: \.self) { issue in Text(issue).font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled) }
             Picker("Training inputs", selection: $trainingSource) {
                 Text("Desktop runs · \(eligibleRuns.count)").tag("desktop")
                 Text("Approved records · \(snapshot?.counts["approvedFileRuns"] ?? 0)").tag("approved")
             }.pickerStyle(.segmented).labelsHidden()
             if trainingSource == "approved" {
                 Text("Uses \(snapshot?.counts["approvedFileRuns"] ?? 0) eligible records from .agent/flywheel/approved-runs.jsonl in this project.")
-                    .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    .font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled)
             } else {
             DisclosureGroup("Reviewed desktop runs · \(selectedRuns.count) selected", isExpanded: $runsExpanded) {
                 if eligibleRuns.isEmpty {
                     Text("Review a completed run in Work before including it in training or evaluation exports.")
-                        .font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                        .font(StackType.caption).foregroundStyle(Palette.secondary).padding(.vertical, 8)
                 } else {
                     VStack(alignment: .leading, spacing: 9) {
                         Text("Choose the reviewed runs to include in this export.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(StackType.caption).foregroundStyle(Palette.secondary)
                         ForEach(eligibleRuns) { run in
                             Toggle(isOn: Binding(get: { selectedRuns.contains(run.id) }, set: { include in
                                 if include { selectedRuns.insert(run.id) } else { selectedRuns.remove(run.id) }
                             })) {
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(run.task).font(.callout).lineLimit(2)
-                                    Text([run.agent, run.model].filter { !$0.isEmpty }.joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                                    Text(run.task).font(StackType.detail).lineLimit(2)
+                                    Text([run.agent, run.model].filter { !$0.isEmpty }.joined(separator: " · ")).font(StackType.caption).foregroundStyle(Palette.secondary).lineLimit(1)
                                 }
                             }.toggleStyle(.checkbox)
                         }
                     }.padding(.vertical, 9)
                 }
-            }.font(.callout)
+            }.font(StackType.detail)
             }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) { trainingButton; metricsButton }
                 VStack(alignment: .leading, spacing: 10) { trainingButton; metricsButton }
             }.disabled(busy || snapshotLoading || snapshot == nil || !model.hostReady)
             if busy { ProgressView().controlSize(.small) }
-            if let error { Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
-            if !message.isEmpty { Text(message).font(.callout).foregroundStyle(.secondary).textSelection(.enabled) }
+            if let error { Text(error).font(StackType.detail).foregroundStyle(.red).textSelection(.enabled) }
+            if !message.isEmpty { Text(message).font(StackType.detail).foregroundStyle(Palette.secondary).textSelection(.enabled) }
             if let artifacts = snapshot?.artifacts {
                 Divider()
-                Text("Export files · \(artifacts.count)").font(.headline)
+                Text("Export files · \(artifacts.count)").font(StackType.heading)
                 if artifacts.isEmpty {
                     Text("No export files yet. Preview metrics or select reviewed training inputs to create an export. Existing files in this project's export folders will appear here too.")
-                        .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(StackType.detail).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(artifacts) { artifact in
                     HStack(spacing: 12) {
-                        Image(systemName: artifact.kind == "training" ? "doc.text" : "chart.bar.doc.horizontal").foregroundStyle(Palette.accent)
+                        Image(systemName: artifact.kind == "training" ? "doc.text" : "chart.bar.doc.horizontal").foregroundStyle(Palette.link)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(artifact.name).font(.callout.weight(.medium)).lineLimit(2)
-                            if artifact.status == "existing" { Text(userFacingPath(artifact.path)).font(.caption2).foregroundStyle(.secondary).lineLimit(2) }
+                            Text(artifact.name).font(StackType.detail.weight(.medium)).lineLimit(2)
+                            if artifact.status == "existing" { Text(userFacingPath(artifact.path)).font(StackType.caption).foregroundStyle(Palette.secondary).lineLimit(2) }
                             Text("\(artifact.type) · \(ByteCountFormatter.string(fromByteCount: Int64(artifact.size), countStyle: .file)) · \(artifact.displayStatus)")
-                                .font(.caption2).foregroundStyle(.secondary)
+                                .font(StackType.caption).foregroundStyle(Palette.secondary)
                         }
                         Spacer()
                         Button("Open") { Task { await open(artifact) } }.disabled(busy)
@@ -137,7 +137,7 @@ struct LearningArtifactsView: View {
     }
     private var trainingButton: some View {
         Button("Preview training & evaluation", systemImage: "doc.text.magnifyingglass") { Task { await makePreview("training") } }
-            .buttonStyle(.borderedProminent).disabled(!canTrain)
+            .buttonStyle(.borderedProminent).tint(Palette.accent).disabled(!canTrain)
     }
     private var metricsButton: some View {
         Button("Preview metrics", systemImage: "chart.bar.doc.horizontal") { Task { await makePreview("metrics") } }
@@ -201,24 +201,24 @@ private struct LearningArtifactApproval: View {
             Text(preview.kind == "training" ? "Review training & evaluation export" : "Review metrics export").font(.title2.weight(.semibold))
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Inputs").font(.headline)
-                    Text("\(preview.recordCount) records · \(preview.sourceCount) sources · \(preview.redactions) redactions").font(.callout)
-                    Text(preview.text).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
+                    Text("Inputs").font(StackType.heading)
+                    Text("\(preview.recordCount) records · \(preview.sourceCount) sources · \(preview.redactions) redactions").font(StackType.detail)
+                    Text(preview.text).font(.system(size: 12, design: .monospaced)).textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(10)
                         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                     Divider()
-                    Text("Files to generate").font(.headline)
-                    ForEach(preview.artifacts, id: \.self) { name in Text(userFacingPath(name)).font(.caption).textSelection(.enabled) }
-                    ForEach(preview.warnings, id: \.self) { warning in Text(warning).font(.caption).foregroundStyle(.secondary) }
-                    Text("Generate only after reviewing these inputs. If they change, create a fresh preview.").font(.caption).foregroundStyle(.secondary)
+                    Text("Files to generate").font(StackType.heading)
+                    ForEach(preview.artifacts, id: \.self) { name in Text(userFacingPath(name)).font(StackType.caption).textSelection(.enabled) }
+                    ForEach(preview.warnings, id: \.self) { warning in Text(warning).font(StackType.caption).foregroundStyle(Palette.secondary) }
+                    Text("Generate only after reviewing these inputs. If they change, create a fresh preview.").font(StackType.caption).foregroundStyle(Palette.secondary)
                 }
             }.frame(maxHeight: 350)
-            if let error { Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled) }
+            if let error { Text(error).font(StackType.caption).foregroundStyle(.red).textSelection(.enabled) }
             HStack {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction).disabled(saving)
                 Spacer()
                 if saving { ProgressView().controlSize(.small) }
-                Button("Approve & generate") { Task { await generate() } }.buttonStyle(.borderedProminent).disabled(saving)
+                Button("Approve & generate") { Task { await generate() } }.buttonStyle(.borderedProminent).tint(Palette.accent).disabled(saving)
             }
         }.padding(26).frame(width: 540).interactiveDismissDisabled(saving)
             .onAppear { host = model.terminalHost; workspaceID = preview.workspaceId }
@@ -242,16 +242,16 @@ private struct LearningArtifactFileView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(URL(fileURLWithPath: file.path).lastPathComponent).font(.title2.weight(.semibold))
-            Text(userFacingPath(file.path)).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+            Text(userFacingPath(file.path)).font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled)
             ScrollView {
-                Text(file.text).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
+                Text(file.text).font(.system(size: 12, design: .monospaced)).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(10)
             }.frame(height: 360).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { Text(error).font(StackType.caption).foregroundStyle(.red) }
             HStack {
                 Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Save a copy…", systemImage: "square.and.arrow.down") { save() }.buttonStyle(.borderedProminent)
+                Button("Save a copy…", systemImage: "square.and.arrow.down") { save() }.buttonStyle(.borderedProminent).tint(Palette.accent)
             }
         }.padding(24).frame(width: DesktopSizing.sheetWidth(660))
     }

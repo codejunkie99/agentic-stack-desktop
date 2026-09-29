@@ -112,7 +112,7 @@ class CloudTests(unittest.TestCase):
         old = self.service.store.workspace_path(local['id']) / 'old-result.md'
         old.write_text('revoked evidence')
         with patch('harness_manager.workspaces.service.shutil.which', return_value='/codex'), patch('threading.Thread.start'):
-            run = self.service.start_run({'workspaceId': local['id'], 'task': 'Summarize'})
+            run = self.service.start_run({'workspaceId': local['id'], 'task': 'Summarize', 'contextOptions': {'mode': 'local'}})
         self.service.threads.clear()
         root = self.service.store.root / 'runs' / run['id']
         self.assertIn('new evidence', (root / 'HANDOVER.md').read_text())

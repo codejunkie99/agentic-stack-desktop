@@ -38,7 +38,7 @@ struct ConversationFileAttachment: Identifiable, Hashable, Sendable {
 @MainActor @Observable
 final class AppModel {
     init() {
-        ProjectAccess.shared.restore()
+        if !ProcessInfo.processInfo.arguments.contains("--jev-ui-fixture") && !ProcessInfo.processInfo.arguments.contains("--jev-search-fixture") { ProjectAccess.shared.restore() }
     }
 
     var snapshot = Snapshot.empty
@@ -82,6 +82,8 @@ final class AppModel {
     var focusedContextReference: ContextReference?
     var requestedGraphNoteID: String?
     var graphFullPage = false
+    var jevMemoryWorkspaces: [String: JevMemoryWorkspace] = [:]
+    var jevProviderSetupRequested = false
     var contextInspectorVisible = true
     var preparingContext = false
     var contextOptionsByDraft: [String: ContextOptions] = [:]

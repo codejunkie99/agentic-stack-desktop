@@ -15,34 +15,34 @@ struct NewWorkspaceSheet: View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 8) {
                 SectionEyebrow(text: "New project")
-                Text("Create a project.").font(.title2.weight(.semibold))
-                Text("Create a managed project folder, or open an existing repository from the sidebar.").foregroundStyle(.secondary)
+                Text("Create a project").font(StackType.title)
+                Text("Create a managed project folder, or open an existing repository from the sidebar.").foregroundStyle(Palette.secondary)
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text("Name").font(.headline)
-                TextField("My project", text: $name).textFieldStyle(.roundedBorder)
+                Text("Name").font(StackType.heading)
+                TextField("Project name", text: $name, prompt: Text("My project")).textFieldStyle(.roundedBorder)
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text("Description (optional)").font(.headline)
-                TextField("Prepare releases with the right context and checks.", text: $goal, axis: .vertical)
+                Text("Description (optional)").font(StackType.heading)
+                TextField("Description", text: $goal, axis: .vertical)
                     .lineLimit(3...5).textFieldStyle(.roundedBorder)
             }
             VStack(alignment: .leading, spacing: 10) {
-                Text("Where agents run").font(.headline)
+                Text("Where agents run").font(StackType.heading)
                 Picker("Location", selection: $provider) {
                     Text(model.isRemote ? "Connected server" : "This Mac").tag("local")
                     Text("Box Cloud").tag("box")
                 }.pickerStyle(.segmented).labelsHidden().accessibilityLabel("Location")
                 Text(provider == "local" ? "Uses the agents installed on the selected host." : "Uses your Box account. Creating this workspace does not start billing; Start creates the machine.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(StackType.caption).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
                 if provider == "box" {
                     Stepper("Auto-stop after \(ttl) minutes", value: $ttl, in: 5...480, step: 5)
                     Toggle("Inherit my Box environment and agent credentials", isOn: $inherit)
                     Text("Enable only for your own trusted workspace. This passes the secrets configured in your Box environment to the machine.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(StackType.caption).foregroundStyle(Palette.secondary)
                 }
             }
-            if let error = model.error { Text(error).font(.callout).foregroundStyle(Palette.accent) }
+            if let error = model.error { Text(error).font(StackType.detail).foregroundStyle(Palette.link) }
         }.padding(24)
         }
             Divider()
@@ -54,7 +54,7 @@ struct NewWorkspaceSheet: View {
                     Task {
                         if await model.create(name: name, goal: goal.isEmpty ? "Manage this project’s Agentic Stack." : goal, provider: provider, ttl: ttl, inherit: inherit) { dismiss() }
                     }
-                }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                }.buttonStyle(.borderedProminent).tint(Palette.accent).keyboardShortcut(.defaultAction)
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.busy)
             }.padding(.horizontal, 24).padding(.vertical, 16)
         }.frame(width: DesktopSizing.sheetWidth(560), height: DesktopSizing.sheetHeight(640)).interactiveDismissDisabled(model.busy)
@@ -73,15 +73,15 @@ struct AddSourceSheet: View {
         ScrollView {
         VStack(alignment: .leading, spacing: 18) {
             Text("Add a source").font(.title2.weight(.semibold))
-            Text("Paste a note, a runbook or a project brief. It will wait for your review.").foregroundStyle(.secondary)
-            Text("Source name").font(.headline)
-            TextField("Release checklist", text: $name).textFieldStyle(.roundedBorder)
-            Text("Source text").font(.headline)
-            TextEditor(text: $content).font(.system(.body, design: .monospaced)).frame(height: 240)
+            Text("Paste a note, a runbook or a project brief. It will wait for your review.").foregroundStyle(Palette.secondary)
+            Text("Source name").font(StackType.heading)
+            TextField("Source name", text: $name, prompt: Text("Release checklist")).textFieldStyle(.roundedBorder)
+            Text("Source text").font(StackType.heading)
+            TextEditor(text: $content).accessibilityLabel("Source text").font(.system(.body, design: .monospaced)).frame(height: 240)
                 .padding(8).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.line))
-            Text("Do not include passwords, tokens or private keys.").font(.caption).foregroundStyle(.secondary)
-            if let error = model.error { Text(error).font(.callout).foregroundStyle(Palette.accent) }
+            Text("Do not include passwords, tokens or private keys.").font(StackType.caption).foregroundStyle(Palette.secondary)
+            if let error = model.error { Text(error).font(StackType.detail).foregroundStyle(Palette.link) }
         }.padding(24)
         }
             Divider()
@@ -95,7 +95,7 @@ struct AddSourceSheet: View {
                             model.section = .references; dismiss()
                         }
                     }
-                }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(name.isEmpty || content.isEmpty || model.busy)
+                }.buttonStyle(.borderedProminent).tint(Palette.accent).keyboardShortcut(.defaultAction).disabled(name.isEmpty || content.isEmpty || model.busy)
             }.padding(.horizontal, 24).padding(.vertical, 16)
         }.frame(width: DesktopSizing.sheetWidth(608), height: DesktopSizing.sheetHeight(660)).interactiveDismissDisabled(model.busy).onAppear { model.error = nil }
     }
@@ -117,21 +117,22 @@ struct NewRunSheet: View {
         ScrollView {
         VStack(alignment: .leading, spacing: 18) {
             SectionEyebrow(text: model.selected?.name ?? "Workspace")
-            Text("Give the agent a clear task.").font(.title2.weight(.semibold))
+            Text("New task").font(StackType.title)
             Text("\(model.approvedCount) reviewed source(s) will be included. \(model.selected?.provider == "box" ? "This sends the task and approved source text to your Box machine and its configured model provider." : "The selected agent runs in this project using its existing sign-in, skills and instructions.")")
-                .font(.callout).foregroundStyle(.secondary)
+                .font(StackType.detail).foregroundStyle(Palette.secondary)
             Picker("Agent", selection: $agent) {
                 Text("Codex").tag("codex")
                 Text("Claude Code").tag("claude-code")
             }.pickerStyle(.segmented)
-            TextEditor(text: $task).frame(height: 150).padding(8)
+            Text("Task instructions").font(StackType.detail.weight(.medium))
+            TextEditor(text: $task).accessibilityLabel("Task instructions").frame(height: 150).padding(8)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.line))
             Toggle("Include relevant knowledge graph memory", isOn: $useKnowledgeGraph)
             Text("Includes up to five matching imported notes as historical reference. Their source paths and content are saved with this task and sent to the selected agent.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(StackType.caption).foregroundStyle(Palette.secondary)
             if model.selected?.provider == "box" {
                 Text("Cloud access follows your Box agent configuration.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(StackType.caption).foregroundStyle(Palette.secondary)
             } else {
                 Picker("Access", selection: $mode) {
                     Text("Read only").tag("read-only")
@@ -144,7 +145,7 @@ struct NewRunSheet: View {
                 AgentModelPicker(runner: agent, choices: model.availableModels, modelID: $modelID, effort: $effort)
             }
             Stepper("Time limit: \(timeout) min", value: $timeout, in: 1...60)
-            if let error = model.error { Text(error).font(.callout).foregroundStyle(Palette.accent) }
+            if let error = model.error { Text(error).font(StackType.detail).foregroundStyle(Palette.link) }
         }.padding(24)
         }
             Divider()
@@ -165,7 +166,7 @@ struct NewRunSheet: View {
                             }
                         } catch { model.error = error.localizedDescription }
                     }
-                }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.busy)
+                }.buttonStyle(.borderedProminent).tint(Palette.accent).keyboardShortcut(.defaultAction).disabled(task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.busy)
             }.padding(.horizontal, 24).padding(.vertical, 16)
         }.frame(width: DesktopSizing.sheetWidth(608), height: DesktopSizing.sheetHeight(700)).interactiveDismissDisabled(model.busy).onAppear { model.error = nil; task = model.runTemplate; model.runTemplate = ""; agent = model.accounts.first(where: { $0.installed })?.id ?? "codex" }
             .task { await model.loadModels() }
@@ -191,21 +192,21 @@ struct SettingsView: View {
                     Text("Dark").tag("dark")
                 }
                 Toggle("Automatically detect coding tools", isOn: $autoDetect)
-                Text("Check installed agents on launch and when returning to the app. Tools refreshes every 30 seconds while open. Memory imports always begin with a preview.").font(.caption).foregroundStyle(.secondary)
+                Text("Check installed agents on launch and when returning to the app. Connections refreshes every 30 seconds while open. Memory imports always begin with a preview.").font(StackType.caption).foregroundStyle(Palette.secondary)
                 LabeledContent("Software updates") {
                     Button("Check for Updates…") { updater.checkForUpdates() }
                 }
-                Text("Agentic Stack checks its signed GitHub release feed. Sparkle asks before enabling automatic checks and verifies every update archive before installation.").font(.caption).foregroundStyle(.secondary)
+                Text("Agentic Stack checks its signed GitHub release feed. Sparkle asks before enabling automatic checks and verifies every update archive before installation.").font(StackType.caption).foregroundStyle(Palette.secondary)
             }
             Section("Memory") {
                 Toggle("Show routine activity in the knowledge graph", isOn: $includeActivity)
-                Text("Focused view hides successful tool bookkeeping and generated session context. Automatic task retrieval uses substantive notes. Originals and provenance are preserved.").font(.caption).foregroundStyle(.secondary)
-                LabeledContent("Library location") { Text(userFacingPath(model.snapshot.dataPath)).font(.caption).textSelection(.enabled) }
+                Text("Focused view hides successful tool bookkeeping and generated session context. Automatic task retrieval uses substantive notes. Originals and provenance are preserved.").font(StackType.caption).foregroundStyle(Palette.secondary)
+                LabeledContent("Library location") { Text(userFacingPath(model.snapshot.dataPath)).font(StackType.caption).textSelection(.enabled) }
             }
             Section {
                 DisclosureGroup("Optional Box Cloud account") {
                 SecureField("API key", text: $key)
-                Text("Stored in this Mac’s Keychain. Your Box account pays for cloud compute.").font(.caption).foregroundStyle(.secondary)
+                Text("Stored in this Mac’s Keychain. Your Box account pays for cloud compute.").font(StackType.caption).foregroundStyle(Palette.secondary)
                 HStack {
                     Button("Load saved key") {
                         Task {
@@ -237,14 +238,14 @@ struct SettingsView: View {
                     }.disabled(key.isEmpty || checking)
                     if checking { ProgressView().controlSize(.small) }
                 }
-                if !message.isEmpty { Text(message).font(.callout).textSelection(.enabled) }
+                if !message.isEmpty { Text(message).font(StackType.detail).textSelection(.enabled) }
                 Link("Open Box dashboard", destination: URL(string: "https://box.ascii.dev/dashboard")!)
             }
             }
             Section("About") {
                 Text("Agentic Stack · \(model.snapshot.version)")
-                Text("Native macOS workspace for your existing agents, skills and memory.").font(.caption).foregroundStyle(.secondary)
-                Text("Made by Avidlive").font(.caption).foregroundStyle(.secondary)
+                Text("Native macOS workspace for your existing agents, skills and memory.").font(StackType.caption).foregroundStyle(Palette.secondary)
+                Text("Made by Avidlive").font(StackType.caption).foregroundStyle(Palette.secondary)
             }
         }.formStyle(.grouped).frame(maxWidth: .infinity, maxHeight: .infinity)
     }

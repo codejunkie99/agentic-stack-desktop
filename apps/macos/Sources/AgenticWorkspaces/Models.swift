@@ -388,7 +388,7 @@ struct GraphImportPreview: Decodable, Sendable {
 }
 
 struct ContextOptions: Sendable, Equatable {
-    var mode = "local"
+    var mode = "jev-fast"
     var tokenBudget = 2500
     var agent = "codex"
     var model = ""
@@ -396,7 +396,7 @@ struct ContextOptions: Sendable, Equatable {
     var excludeIds: [String] = []
     var params: [String: Any] {
         ["mode": mode, "tokenBudget": tokenBudget, "agent": agent, "model": model,
-         "timeoutSeconds": 20, "pinnedIds": pinnedIds, "excludeIds": excludeIds]
+         "timeoutSeconds": mode == "jev-fast" ? 5 : 20, "pinnedIds": pinnedIds, "excludeIds": excludeIds]
     }
 }
 

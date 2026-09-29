@@ -13,11 +13,11 @@ struct PersonalMemoryView: View {
             VStack(alignment: .leading, spacing: 24) {
                 HStack(alignment: .top, spacing: 18) {
                     Image(systemName: "person.crop.circle.badge.checkmark")
-                        .font(.system(size: 32, weight: .light)).foregroundStyle(Palette.accent)
+                        .font(.system(size: 32, weight: .light)).foregroundStyle(Palette.link)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("The context your agents inherit").font(.title2.weight(.semibold))
+                        Text("Personal memory").font(StackType.title)
                         Text("Stable preferences stay separate from current project state. Agentic Stack retrieves only relevant reviewed memory for each request and keeps the source visible here.")
-                            .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            .font(StackType.detail).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 12)
                     Button("Reveal profile files", systemImage: "folder") { revealProfileFiles() }
@@ -25,14 +25,14 @@ struct PersonalMemoryView: View {
                 }
 
                 HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
                     TextField("Find a preference, decision, or current focus", text: $query)
                         .textFieldStyle(.plain).onSubmit { Task { await reload() } }
                     if !query.isEmpty {
                         Button { query = ""; Task { await reload() } } label: { Image(systemName: "xmark.circle.fill") }
-                            .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Clear memory search")
+                            .buttonStyle(.plain).foregroundStyle(Palette.secondary).accessibilityLabel("Clear memory search")
                     }
-                    Button("Search") { Task { await reload() } }.buttonStyle(.borderedProminent)
+                    Button("Search") { Task { await reload() } }.buttonStyle(.borderedProminent).tint(Palette.accent)
                 }
                 .padding(.horizontal, 14).frame(height: 42)
                 .background(Palette.surface, in: RoundedRectangle(cornerRadius: 10))
@@ -83,8 +83,8 @@ struct PersonalMemoryView: View {
 
     private func memorySection<Content: View>(_ title: String, detail: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title).font(.headline)
-            Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(title).font(StackType.heading)
+            Text(detail).font(StackType.caption).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
             Divider()
             content()
         }
@@ -96,22 +96,22 @@ struct PersonalMemoryView: View {
     private func memoryRow(title: String, content: String, source: String, symbol: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: symbol).foregroundStyle(Palette.accent)
+                Image(systemName: symbol).foregroundStyle(Palette.link)
                 Text(title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
                 Spacer(minLength: 8)
                 Button { openSource(source) } label: { Image(systemName: "arrow.up.right") }
-                    .buttonStyle(.plain).foregroundStyle(.secondary).disabled(model.selected?.projectPath == nil)
+                    .buttonStyle(.plain).foregroundStyle(Palette.secondary).disabled(model.selected?.projectPath == nil)
                     .accessibilityLabel("Open " + source)
             }
-            Text(content).font(.system(size: 12)).foregroundStyle(.secondary)
+            Text(content).font(.system(size: 12)).foregroundStyle(Palette.secondary)
                 .lineLimit(9).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-            Text(source).font(.system(size: 10, design: .monospaced)).foregroundStyle(.tertiary)
+            Text(source).font(.system(size: 12, design: .monospaced)).foregroundStyle(.tertiary)
                 .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
         }.padding(.vertical, 3)
     }
 
     private func emptyRow(_ message: String) -> some View {
-        Text(message).font(.callout).foregroundStyle(.secondary).padding(.vertical, 12)
+        Text(message).font(StackType.detail).foregroundStyle(Palette.secondary).padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 

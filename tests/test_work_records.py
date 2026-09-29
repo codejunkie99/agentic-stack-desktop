@@ -111,3 +111,28 @@ def test_agent_retrieval_runs_outside_service_lock_and_cancels_without_launch(tm
             executor.assert_not_called()
     finally:
         service.close()
+
+
+def test_handoff_rechecks_memory_revision_and_retraction(tmp_path):
+    from harness_manager.workspaces.context_packs import build_pack, options
+    from harness_manager.workspaces.memory_sources import MemorySources
+    service = WorkspaceService(tmp_path/'data')
+    project = tmp_path/'project'; project.mkdir()
+    wid = service.open_project({'path': str(project)})['id']
+    evidence = service.memory_ledger.observe(wid, source_key='fixture', body='Use scoped cache keys.')
+    claim = service.memory_ledger.propose(wid, body=evidence['body'], kind='decision', evidence_ids=[evidence['id']])
+    service.memory_ledger.review(wid, claim['id'], expected_revision=1, status='accepted', rationale='Confirmed')
+    source = MemorySources(service.knowledge).note(wid, 'claim:' + claim['id'])
+    pack = build_pack([source], options({'mode': 'local'}))
+    run = service.store.create('run', dict(workspaceId=wid, task='Inspect cache', status='needs_review',
+        output='Synthetic output', memoryRefs=pack['refs']))
+    service.work.sync()
+    work_id = service.store.get('run', run['id'])['workId']
+    reference = lambda: service.work.continuation(work_id)['evidence'][0]['memoryRefs'][0]
+    assert reference()['freshness'] == 'current'
+    service.memory_ledger.review(wid, claim['id'], expected_revision=2, status='accepted', rationale='Reconfirmed with new review')
+    assert reference()['freshness'] == 'changed'
+    service.memory_ledger.review(wid, claim['id'], expected_revision=3, status='retracted', rationale='No longer applies')
+    assert reference()['freshness'] == 'unavailable'
+    assert service.store.get('run', run['id'])['memoryRefs'] == pack['refs']
+    service.close()

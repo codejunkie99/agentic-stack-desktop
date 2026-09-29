@@ -16,8 +16,8 @@ struct LoopManagementView: View {
             VStack(alignment: .leading, spacing: 24) {
                 HStack {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Verified loops").font(.headline)
-                        Text("A maker changes the code, a deterministic command verifies it, and a checker reviews the result. Each loop follows the project's limits and permissions.").foregroundStyle(.secondary)
+                        Text("Verified loops").font(StackType.title)
+                        Text("Run a repeatable cycle: make a change, verify it, and review the result. Project limits and permissions apply.").foregroundStyle(Palette.secondary)
                     }
                     Spacer()
                     Button("Refresh", systemImage: "arrow.clockwise") { Task { await reload() } }.disabled(fetching)
@@ -25,42 +25,42 @@ struct LoopManagementView: View {
                 if let snapshot {
                     if let accessError = snapshot.projectAccessError, !accessError.isEmpty {
                         HStack(alignment: .center, spacing: 14) {
-                            Image(systemName: "folder.badge.questionmark").font(.title2).foregroundStyle(Palette.accent)
+                            Image(systemName: "folder.badge.questionmark").font(.title2).foregroundStyle(Palette.link)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Reconnect project folder").font(.headline)
-                                Text(accessError).font(.callout).foregroundStyle(.secondary)
+                                Text("Reconnect project folder").font(StackType.heading)
+                                Text(accessError).font(StackType.detail).foregroundStyle(Palette.secondary)
                             }
                             Spacer()
-                            Button("Choose folder…") { model.chooseProject() }.buttonStyle(.borderedProminent)
+                            Button("Choose folder…") { model.chooseProject() }.buttonStyle(.borderedProminent).tint(Palette.accent)
                         }
                         .padding(16)
                         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                     }
                     if snapshot.contracts.isEmpty {
                         if snapshot.projectAccessError?.isEmpty != false {
-                            Button("Initialize loop contracts") { Task { await action("stack.command", ["operation": "loop-init"]) } }.buttonStyle(.borderedProminent)
+                            Button("Initialize loop contracts") { Task { await action("stack.command", ["operation": "loop-init"]) } }.buttonStyle(.borderedProminent).tint(Palette.accent)
                         }
                     }
                     ForEach(snapshot.contracts) { contract in
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 5) {
-                                    Text(contract.name).font(.headline)
-                                    Text(contract.description).font(.callout).foregroundStyle(.secondary)
+                                    Text(contract.name).font(StackType.heading)
+                                    Text(contract.description).font(StackType.detail).foregroundStyle(Palette.secondary)
                                 }
                                 Spacer()
                                 StatusLabel(title: contract.error.isEmpty ? contract.autonomy : "Invalid contract")
                             }
-                            if !contract.error.isEmpty { Text(contract.error).font(.caption).foregroundStyle(Palette.accent) }
+                            if !contract.error.isEmpty { Text(contract.error).font(StackType.caption).foregroundStyle(Palette.link) }
                             HStack {
                                 Button("Run loop", systemImage: "play.fill") { resume = nil; selectedContract = contract }
-                                    .buttonStyle(.borderedProminent).disabled(!contract.error.isEmpty || snapshot.runs.contains(where: \.isActive))
+                                    .buttonStyle(.borderedProminent).tint(Palette.accent).disabled(!contract.error.isEmpty || snapshot.runs.contains(where: \.isActive))
                                 Button("Connect agents") { configuring = contract }.disabled(!contract.error.isEmpty)
                                 Button("Edit contract") { editingPath = ".agent/loops/\(contract.id).json" }
                             }
                             DisclosureGroup("Limits and capabilities") {
                                 Text(contract.limits).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                                Text(contract.capabilities.joined(separator: ", ")).font(.caption)
+                                Text(contract.capabilities.joined(separator: ", ")).font(StackType.caption)
                             }
                         }.padding(20).background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
                     }
@@ -70,15 +70,15 @@ struct LoopManagementView: View {
                         Button("Edit constraints") { editingPath = ".agent/loops/constraints.json" }
                     }.disabled(snapshot.contracts.isEmpty)
                     Divider()
-                    Text("Loop history").font(.headline)
-                    if snapshot.runs.isEmpty { Text("Run a loop to see its attempts, verification and worktree here.").foregroundStyle(.secondary) }
+                    Text("Loop history").font(StackType.heading)
+                    if snapshot.runs.isEmpty { Text("Run a loop to see its attempts, verification and worktree here.").foregroundStyle(Palette.secondary) }
                     ForEach(snapshot.runs) { run in
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 5) {
-                                    Text(run.name).font(.headline)
-                                    Text(run.task).font(.callout).lineLimit(3)
-                                    Text("\(run.attempts) attempts · \(run.phase.isEmpty ? "Not started" : run.phase)").font(.caption).foregroundStyle(.secondary)
+                                    Text(run.name).font(StackType.heading)
+                                    Text(run.task).font(StackType.detail).lineLimit(3)
+                                    Text("\(run.attempts) attempts · \(run.phase.isEmpty ? "Not started" : run.phase)").font(StackType.caption).foregroundStyle(Palette.secondary)
                                 }
                                 Spacer()
                                 StatusLabel(title: run.status.replacingOccurrences(of: "_", with: " ").capitalized, active: run.isActive)
@@ -89,10 +89,10 @@ struct LoopManagementView: View {
                                     Button("Resume…") { resume = run; selectedContract = contract }
                                 }
                             }
-                            if !run.error.isEmpty { Text(run.error).font(.callout).foregroundStyle(Palette.accent) }
+                            if !run.error.isEmpty { Text(run.error).font(StackType.detail).foregroundStyle(Palette.link) }
                             if !run.worktree.isEmpty {
                                 HStack {
-                                    Text(run.worktree).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                                    Text(run.worktree).font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled)
                                     if !model.isRemote { Button("Open worktree") { NSWorkspace.shared.open(URL(fileURLWithPath: run.worktree)) } }
                                 }
                             }
@@ -103,7 +103,7 @@ struct LoopManagementView: View {
                         }
                     }
                 } else { ProgressView("Reading loop contracts…") }
-                if !message.isEmpty { Text(message).font(.callout).textSelection(.enabled) }
+                if !message.isEmpty { Text(message).font(StackType.detail).textSelection(.enabled) }
             }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
         }
         .task(id: model.selectedID) {
@@ -155,14 +155,14 @@ struct LoopRunSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text(resuming == nil ? "Run \(contract.name)" : "Resume \(contract.name)").font(.title2.weight(.semibold))
-            Text("\(contract.autonomy) · executor: \(contract.executor)" + (contract.checker.isEmpty ? "" : " · checker: \(contract.checker)")).foregroundStyle(.secondary)
+            Text("\(contract.autonomy) · executor: \(contract.executor)" + (contract.checker.isEmpty ? "" : " · checker: \(contract.checker)")).foregroundStyle(Palette.secondary)
             TextEditor(text: $task).frame(height: 110).padding(8).overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.line)).disabled(resuming != nil)
             Text(contract.limits).font(.system(.caption, design: .monospaced))
             Text("Verifier: \(contract.verification.isEmpty ? "None" : contract.verification)").font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-            Text("Location: \(contract.isolation == "worktree" ? "separate Git worktree" : "current project") · capabilities: \(contract.capabilities.joined(separator: ", "))").font(.caption)
-            Text("This runs the project's configured commands. Review the contract, verifier and agent profiles before proceeding.").font(.callout).foregroundStyle(.secondary)
+            Text("Location: \(contract.isolation == "worktree" ? "separate Git worktree" : "current project") · capabilities: \(contract.capabilities.joined(separator: ", "))").font(StackType.caption)
+            Text("This runs the project's configured commands. Review the contract, verifier and agent profiles before proceeding.").font(StackType.detail).foregroundStyle(Palette.secondary)
             Toggle("I approve this task under the displayed contract and limits", isOn: $approved)
-            if !message.isEmpty { Text(message).font(.callout).foregroundStyle(Palette.accent) }
+            if !message.isEmpty { Text(message).font(StackType.detail).foregroundStyle(Palette.link) }
             HStack {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
@@ -175,7 +175,7 @@ struct LoopRunSheet: View {
                             dismiss()
                         } catch { message = error.localizedDescription }
                     }
-                }.buttonStyle(.borderedProminent).disabled(!approved || task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
+                }.buttonStyle(.borderedProminent).tint(Palette.accent).disabled(!approved || task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
             }
         }.padding(28).frame(width: 590).interactiveDismissDisabled(busy)
             .onAppear { wid = model.selectedID; task = resuming?.task ?? "" }
@@ -201,12 +201,12 @@ struct LoopAgentSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text(hasChecker ? "Connect the loop's agents" : "Connect the loop's agent").font(.title2.weight(.semibold))
-            Text(profileDescription).font(.callout).foregroundStyle(.secondary)
+            Text(profileDescription).font(StackType.detail).foregroundStyle(Palette.secondary)
             Picker(contract.executor.capitalized, selection: $maker) { Text("Codex").tag("codex"); Text("Claude Code").tag("claude-code") }
             if hasChecker {
                 Picker(contract.checker.capitalized, selection: $checker) { Text("Claude Code").tag("claude-code"); Text("Codex").tag("codex") }
             }
-            if !message.isEmpty { Text(message).font(.callout).foregroundStyle(Palette.accent) }
+            if !message.isEmpty { Text(message).font(StackType.detail).foregroundStyle(Palette.link) }
             HStack {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
@@ -221,7 +221,7 @@ struct LoopAgentSheet: View {
                             dismiss()
                         } catch { message = error.localizedDescription }
                     }
-                }.buttonStyle(.borderedProminent).disabled(busy)
+                }.buttonStyle(.borderedProminent).tint(Palette.accent).disabled(busy)
             }
         }.padding(28).frame(width: 540).interactiveDismissDisabled(busy)
     }

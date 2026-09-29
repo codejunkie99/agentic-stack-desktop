@@ -35,14 +35,14 @@ struct IntegrationsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 7) {
                     Text("Context sources").font(.title2.weight(.semibold))
-                    Text(model.isRemote ? "One memory layer for agents on the connected server." : "One local memory layer for every coding agent on this Mac.")
-                        .foregroundStyle(.secondary)
-                    if let scannedAt { Text("Last checked \(scannedAt.formatted(date: .omitted, time: .shortened))").font(.caption).foregroundStyle(.secondary) }
+                    Text(model.isRemote ? "One memory layer for agents on the connected server." : "Connect your coding tools and bring their knowledge into this workspace.")
+                        .foregroundStyle(Palette.secondary)
+                    if let scannedAt { Text("Last checked \(scannedAt.formatted(date: .omitted, time: .shortened))").font(StackType.caption).foregroundStyle(Palette.secondary) }
                 }
-                Spacer()
+                HStack(spacing: 12) {
                 Button("Detect tools", systemImage: "arrow.clockwise") { Task { await detect() } }.disabled(scanning)
                 Menu("Agent access", systemImage: "at") {
                     Button("Connect all four tools") { Task { await configureContext("context.install") } }
@@ -52,21 +52,22 @@ struct IntegrationsView: View {
                     Button("Detected tool memory…") { migrationRequest = MigrationRequest(providers: nil) }
                     Button("Folder or conversation export…") { migrationRequest = MigrationRequest(providers: []) }
                 }.disabled(model.selectedID == nil)
+                }
             }.padding(.horizontal, 24).padding(.top, 22).padding(.bottom, 16)
             contextOverview.padding(.horizontal, 24).padding(.bottom, 18)
             HStack {
-                TextField("Find a coding tool", text: $search).textFieldStyle(.roundedBorder)
+                StackSearchField(title: "Find a coding tool", text: $search)
                 Toggle("Show all four tools", isOn: $showAll).toggleStyle(.checkbox)
                 if scanning { ProgressView().controlSize(.small) }
             }.padding(.horizontal, 24).padding(.bottom, 18)
             Divider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
-                    if !message.isEmpty { Text(message).foregroundStyle(Palette.accent).textSelection(.enabled) }
+                    if !message.isEmpty { Text(message).foregroundStyle(Palette.link).textSelection(.enabled) }
                     if tools.isEmpty && !scanning {
-                        Text("Detect tools to find installed agents and portable knowledge files.").foregroundStyle(.secondary)
+                        Text("Detect tools to find installed agents and portable knowledge files.").foregroundStyle(Palette.secondary)
                     } else if visible.isEmpty && !scanning {
-                        Text("No matching tools found. Show all four tools, or choose an export folder.").foregroundStyle(.secondary)
+                        Text("No matching tools found. Show all four tools, or choose an export folder.").foregroundStyle(Palette.secondary)
                     }
                     ForEach(visible) { tool in
                         integration(tool)
@@ -76,8 +77,8 @@ struct IntegrationsView: View {
                             ForEach(model.profiles) { profile in
                                 HStack {
                                     VStack(alignment: .leading, spacing: 3) {
-                                        Text(profile.name).font(.callout.weight(.medium))
-                                        Text(profile.role).font(.caption).foregroundStyle(.secondary)
+                                        Text(profile.name).font(StackType.detail.weight(.medium))
+                                        Text(profile.role).font(StackType.caption).foregroundStyle(Palette.secondary)
                                     }
                                     Spacer()
                                     Button("Edit") { model.editAgent(profile) }
@@ -103,8 +104,8 @@ struct IntegrationsView: View {
                         }.padding(.vertical, 12)
                     }
                     Text("Import knowledge from Claude Code, Codex, OpenCode, and Cursor. Skills and project diagnostics are in Settings.")
-                        .font(.caption).foregroundStyle(.secondary)
-                    if model.selectedID == nil { Text("Open a project to migrate knowledge or add skills and adapters.").font(.callout).foregroundStyle(.secondary) }
+                        .font(StackType.caption).foregroundStyle(Palette.secondary)
+                    if model.selectedID == nil { Text("Open a project to migrate knowledge or add skills and adapters.").font(StackType.detail).foregroundStyle(Palette.secondary) }
                 }.padding(18)
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -129,19 +130,17 @@ struct IntegrationsView: View {
             contextMetric(value: model.isRemote ? "Server" : "On-device", label: "Context stays local", symbol: "lock.shield")
         }
         .padding(.vertical, 15)
-        .background(LinearGradient(colors: [Palette.accent.opacity(0.11), .purple.opacity(0.055), .primary.opacity(0.025)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: 16))
-        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Palette.accent.opacity(0.18)) }
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.line) }
     }
 
     private func contextMetric(value: String, label: String, symbol: String) -> some View {
         HStack(spacing: 11) {
-            Image(systemName: symbol).font(.system(size: 16, weight: .medium)).foregroundStyle(Palette.accent)
+            Image(systemName: symbol).font(.system(size: 16, weight: .medium)).foregroundStyle(Palette.link)
                 .frame(width: 34, height: 34).background(Palette.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 2) {
                 Text(value).font(.system(size: 14, weight: .semibold))
-                Text(label).font(.caption).foregroundStyle(.secondary)
+                Text(label).font(StackType.caption).foregroundStyle(Palette.secondary)
             }
             Spacer(minLength: 8)
         }.frame(maxWidth: .infinity).padding(.horizontal, 16)
@@ -151,8 +150,8 @@ struct IntegrationsView: View {
         let account = model.accounts.first { $0.id == tool.agentId }
         return VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Image(systemName: tool.agentId.isEmpty ? "app.dashed" : "terminal").font(.title3).foregroundStyle(Palette.accent)
-                Text(tool.name).font(.headline)
+                Image(systemName: tool.agentId.isEmpty ? "app.dashed" : "terminal").font(.title3).foregroundStyle(Palette.link)
+                Text(tool.name).font(StackType.heading)
                 Spacer()
                 StatusLabel(title: account?.status ?? (tool.installed ? "Installed" : tool.detected ? "Files found" : "Not detected"), active: account?.signedIn == true)
                 if let account, account.installed && !account.signedIn {
@@ -164,15 +163,15 @@ struct IntegrationsView: View {
                 Label("History and memory", systemImage: "books.vertical")
                 if ["codex", "claude-code"].contains(tool.agentId) { Label("Run agents", systemImage: "play.circle") }
                 else { Label("Context source", systemImage: "doc.text.magnifyingglass") }
-            }.font(.caption).foregroundStyle(.secondary)
+            }.font(StackType.caption).foregroundStyle(Palette.secondary)
             Text(tool.migration)
-                .font(.callout).foregroundStyle(.secondary)
+                .font(StackType.detail).foregroundStyle(Palette.secondary)
             if !tool.locations.isEmpty {
                 DisclosureGroup("\(tool.locations.count) knowledge locations") {
                     ForEach(tool.locations, id: \.self) { Text(userFacingPath($0)).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
-                }.font(.caption)
+                }.font(StackType.caption)
             }
-            if !tool.executable.isEmpty { Text(userFacingPath(tool.executable)).font(.caption2).foregroundStyle(.secondary).textSelection(.enabled) }
+            if !tool.executable.isEmpty { Text(userFacingPath(tool.executable)).font(StackType.caption).foregroundStyle(Palette.secondary).textSelection(.enabled) }
         }.padding(.vertical, 12).padding(.horizontal, 4)
             .overlay(alignment: .bottom) { Rectangle().fill(Palette.line).frame(height: 1) }
     }
