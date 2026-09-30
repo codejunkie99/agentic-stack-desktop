@@ -388,6 +388,11 @@ struct GraphImportPreview: Decodable, Sendable {
 }
 
 struct ContextOptions: Sendable, Equatable {
+    static func defaultForProvider(available: Bool) -> ContextOptions {
+        var options = ContextOptions()
+        if !available { options.mode = "local" }
+        return options
+    }
     var mode = "jev-fast"
     var tokenBudget = 2500
     var agent = "codex"

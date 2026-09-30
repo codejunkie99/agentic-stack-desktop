@@ -60,6 +60,7 @@ struct JevImportView: View {
             HStack {
                 Button("Previous") { offset = max(0, offset - 20); Task { await load() } }.disabled(offset == 0 || busy)
                 Button("Next") { offset = page?.nextOffset ?? offset; Task { await load() } }.disabled(page?.hasMore != true || busy)
+                Button("Refresh preview", systemImage: "arrow.clockwise") { Task { await load() } }.disabled(busy || !model.hostReady)
                 if busy { ProgressView().controlSize(.small) }
                 Spacer()
                 Button("Done") { dismiss() }.disabled(busy)
@@ -75,7 +76,7 @@ struct JevImportView: View {
         do {
             let result = try await model.terminalCall("memory.migration.preview", ["workspaceId": wid, "offset": offset], host: host, as: MigrationPage.self)
             guard !Task.isCancelled, key == model.handoverPreviewKey else { return }
-            page = result; busy = false
+            page = result; message = ""; busy = false
         } catch {
             guard key == model.handoverPreviewKey else { return }
             message = error.localizedDescription; busy = false

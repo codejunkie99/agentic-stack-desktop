@@ -22,11 +22,6 @@ private struct JevSnapshot: Decodable {
     let proposals: [JevProposal]
     let providerAvailable: Bool
 }
-private struct JevProviderStatus: Decodable {
-    let enabled: Bool
-    let configured: Bool
-    let model: String
-}
 private struct JevEvidence: Decodable {
     let sourceKey: String
     let body: String
@@ -70,8 +65,6 @@ struct JevLedgerView: View {
     @State private var reconciliationCursors: [String: JevCursor] = [:]
     @State private var showingImport = false
     @State private var showingSetup = false
-    @State private var providerToken = ""
-    @State private var providerConsent = false
     @State private var snapshot: JevSnapshot?
     @State private var message = ""
     @State private var busy = false
@@ -102,7 +95,7 @@ struct JevLedgerView: View {
                     Label(snapshot.providerAvailable ? "Jev enabled" : "Jev is not configured", systemImage: snapshot.providerAvailable ? "checkmark.circle" : "circle.dashed")
                         .font(StackType.caption).foregroundStyle(Palette.secondary)
                     Spacer()
-                    Button("Provider settings") { providerToken = ""; providerConsent = false; showingSetup = true }
+                    Button("Provider settings") { showingSetup = true }
                         .disabled(busy || !model.hostReady)
                 }
                 StackSearchField(title: "Filter decisions, facts, and preferences", text: $search)
@@ -128,7 +121,7 @@ struct JevLedgerView: View {
             if !message.isEmpty { Text(message).font(StackType.detail).textSelection(.enabled) }
         }
         .task(id: model.handoverPreviewKey) {
-            snapshot = nil; review = nil; reconciliationCursors = [:]; showingImport = false; showingSetup = false; providerToken = ""; providerConsent = false; showingEvidence = false; evidenceText = ""; message = ""
+            snapshot = nil; review = nil; reconciliationCursors = [:]; showingImport = false; showingSetup = false; showingEvidence = false; evidenceText = ""; message = ""
             await reload()
             if model.jevProviderSetupRequested { model.jevProviderSetupRequested = false; showingSetup = true }
         }
@@ -138,25 +131,8 @@ struct JevLedgerView: View {
         .sheet(isPresented: $showingImport, onDismiss: { Task { await reload() } }) {
             JevImportView(model: model, providerAvailable: snapshot?.providerAvailable == true)
         }
-        .sheet(isPresented: $showingSetup, onDismiss: { providerToken = ""; providerConsent = false }) {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Connect Jev").font(StackType.title)
-                Text("Enable memory decisions through TypeSafe on this host. Desktop and connected agents using its context bridge share this setting.").foregroundStyle(Palette.secondary)
-                SecureField("TypeSafe API key", text: $providerToken).textFieldStyle(.roundedBorder)
-                Text("Your key is stored in an owner-only file on the selected host. It is not included in memory records or API status responses.").font(StackType.caption).foregroundStyle(Palette.secondary)
-                Toggle("Allow hosted memory processing", isOn: $providerConsent)
-                Text("Selected task queries, memory claims, evidence passages, and source metadata may be sent to api.typesafe.ai. Jev can recommend changes; applying them still requires review. This enables processing for projects on this host.").font(StackType.detail).foregroundStyle(Palette.secondary)
-                if !message.isEmpty { Text(message).font(StackType.detail) }
-                HStack {
-                    Button("Cancel") { showingSetup = false }.disabled(busy)
-                    if snapshot?.providerAvailable == true {
-                        Button("Disconnect", role: .destructive) { Task { await configureProvider(disconnect: true) } }.disabled(busy)
-                    }
-                    Spacer()
-                    Button("Enable Jev") { Task { await configureProvider(disconnect: false) } }
-                        .buttonStyle(.borderedProminent).disabled(busy || !providerConsent || providerToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }.padding(24).frame(width: 560).interactiveDismissDisabled(busy)
+        .sheet(isPresented: $showingSetup, onDismiss: { Task { await reload() } }) {
+            JevProviderSettingsView(model: model)
         }
         .sheet(item: $review) { item in
             VStack(alignment: .leading, spacing: 16) {
@@ -232,22 +208,6 @@ struct JevLedgerView: View {
             }.disabled(busy || !model.hostReady)
         }.padding(.vertical, 16)
             .overlay(alignment: .bottom) { Divider() }
-    }
-
-    private func configureProvider(disconnect: Bool) async {
-        guard model.hostReady else { return }
-        let key = model.handoverPreviewKey, host = model.terminalHost
-        busy = true
-        do {
-            let params: [String: Any] = disconnect ? [:] : ["token": providerToken, "enabled": true, "consent": providerConsent]
-            let _ = try await model.terminalCall(disconnect ? "memory.provider.disconnect" : "memory.provider.configure", params, host: host, as: JevProviderStatus.self)
-            guard key == model.handoverPreviewKey else { return }
-            providerToken = ""; showingSetup = false; message = ""
-            await reload()
-        } catch {
-            guard key == model.handoverPreviewKey else { return }
-            providerToken = ""; message = error.localizedDescription; busy = false
-        }
     }
 
     private func choose(_ item: JevReview) { rationale = ""; message = ""; review = item }

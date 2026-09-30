@@ -337,3 +337,15 @@ def test_provider_numeric_overflow_is_invalid_response_and_never_selection():
             return result
     result = JevRuntime(Malformed()).dispatch('memory.citations.verify', dict(claim='Claim', evidence=[dict(id='e', source='Evidence', body='Source body')]))
     assert result['status'] == 'unavailable' and not result['assessments'] and not result['selectedIds']
+
+
+@pytest.mark.parametrize('body', ['ghp_' + 'a' * 36, 'password="' + 'a' * 20 + '"'])
+def test_common_code_credentials_never_reach_hosted_provider(tmp_path, body):
+    provider = Provider()
+    runtime = JevRuntime(provider)
+    with pytest.raises(ValueError, match='credential'):
+        runtime.dispatch('memory.code.search', dict(task='Find behavior', snippets=[dict(id='code', body=body, source='sample.py')]))
+    assert provider.calls == []
+    (tmp_path / 'sample.py').write_text(body)
+    outcome = runtime.dispatch('memory.code.search', dict(task='Find behavior'), project_root=tmp_path)
+    assert outcome['matches'] == [] and provider.calls == []

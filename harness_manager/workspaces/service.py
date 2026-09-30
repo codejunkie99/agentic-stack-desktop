@@ -281,7 +281,13 @@ class WorkspaceService:
         routing = routing_policy(p.get('routing'))
         attachment_blobs = decode_attachments(p.get('attachments'))
         attachments = public_attachments(attachment_blobs)
-        context = context_options(p.get('contextOptions', {'mode': 'off'} if p.get('useKnowledgeGraph') is False else None), legacy=p.get('useKnowledgeGraph') is True)
+        requested_context = p.get('contextOptions')
+        if 'contextOptions' not in p:
+            if p.get('useKnowledgeGraph') is False:
+                requested_context = {'mode': 'off'}
+            elif p.get('useKnowledgeGraph') is True or not self.jev_memory.provider.available:
+                requested_context = {'mode': 'local'}
+        context = context_options(requested_context, legacy=p.get('useKnowledgeGraph') is True)
         with self.lock:
             conversation = None
             if p.get('conversationId'):
@@ -934,7 +940,7 @@ class WorkspaceService:
             self.conversation_refs.knowledge = self.knowledge
             prompt = self.context_prompt(p['workspaceId'], safe_content(text(p.get('prompt'), 'Prompt', 12000)), p.get('workId'))
             pack = self.context_packs.prepare(self.knowledge, p['workspaceId'],
-                prompt, p.get('contextOptions'),
+                prompt, p.get('contextOptions', {'mode': 'local'} if not self.jev_memory.provider.available else None),
                 conversations=self.conversation_refs, exclude_conversation=p.get('excludeConversationId', ''))
             return self._context_receipt(p['workspaceId'], prompt, pack)
         if method in {'work.list', 'work.get', 'work.update', 'work.continue'}:

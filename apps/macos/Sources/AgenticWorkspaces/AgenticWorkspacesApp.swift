@@ -29,7 +29,9 @@ struct AgenticWorkspacesApp: App {
         WindowGroup("Agentic Stack") {
             GeometryReader { window in
                 Group {
-                    if let jevSearchFixture {
+                    if let jevSearchFixture, jevSearchFixture.hasPrefix("settings-") {
+                        SettingsView(model: model, updater: updater)
+                    } else if let jevSearchFixture {
                         SpotlightSearchView(model: model, fixture: jevSearchFixture)
                             .padding(24).frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.canvas)
                     } else if let jevFixture { JevMemoryPage(model: model, fixture: jevFixture) }
@@ -44,6 +46,8 @@ struct AgenticWorkspacesApp: App {
                 .foregroundStyle(Palette.text)
                 .controlSize(.regular)
                 .preferredColorScheme(jevFixture != nil || jevSearchFixture != nil ? fixtureColorScheme : appearance == "system" ? nil : appearance == "dark" ? .dark : .light)
+                .sheet(isPresented: $model.showingJevProviderSettings) { JevProviderSettingsView(model: model) }
+                .task(id: model.jevProviderHostKey) { await model.refreshJevProviderStatus() }
                 .task {
                     guard jevFixture == nil && jevSearchFixture == nil else { return }
                     await model.refresh()
@@ -56,7 +60,10 @@ struct AgenticWorkspacesApp: App {
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                    if jevFixture == nil && jevSearchFixture == nil && autoDetect { Task { await model.refreshAccounts() } }
+                    if jevFixture == nil && jevSearchFixture == nil {
+                        Task { await model.refreshJevProviderStatus() }
+                        if autoDetect { Task { await model.refreshAccounts() } }
+                    }
                 }
         }
         .defaultSize(width: 1180, height: 780)

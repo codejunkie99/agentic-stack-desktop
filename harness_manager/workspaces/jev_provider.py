@@ -62,6 +62,36 @@ def validate_questions(questions):
             raise JevError('request')
 
 
+def _rounding_error(value):
+    return .005 if abs(value - round(value, 2)) < 1e-10 else 1e-9
+
+
+def _distribution_bounds(probabilities):
+    """Bound underlying probabilities when hosted values are rounded to two decimals.
+
+    Preserve returned values. Higher precision fixtures remain exact; a rounded
+    distribution must still admit total mass one. Greedy extremes bound Score
+    consistency instead of accepting an arbitrary difference from its expectation.
+    """
+    bounds = []
+    for probability in probabilities.values():
+        error = _rounding_error(probability)
+        bounds.append((max(0., probability - error), min(1., probability + error)))
+    if sum(low for low, _ in bounds) > 1 + 1e-9 or sum(high for _, high in bounds) < 1 - 1e-9:
+        raise JevError('response')
+    return bounds
+
+
+def _score_extreme(bounds, *, highest):
+    mass = [low for low, _ in bounds]
+    remaining = max(0., 1 - sum(mass))
+    for index in sorted(range(len(bounds)), reverse=highest):
+        addition = min(remaining, bounds[index][1] - mass[index])
+        mass[index] += addition
+        remaining -= addition
+    return sum(index * probability for index, probability in enumerate(mass))
+
+
 def validate_response(value, questions):
     if (not isinstance(value, dict) or not isinstance(value.get('model'), str)
             or not value['model'] or len(value['model']) > 200
@@ -85,9 +115,9 @@ def validate_response(value, questions):
         probabilities = answer.get('probabilities')
         if (not isinstance(probabilities, dict) or set(probabilities) != keys
                 or any(not _number(p, 0, 1) for p in probabilities.values())
-                or abs(sum(probabilities.values()) - 1) > 0.001
                 or not _number(answer.get('confidence'), 0, 1)):
             raise JevError('response')
+        bounds = _distribution_bounds(probabilities)
         clean = dict(type=kind, probabilities=probabilities, confidence=answer['confidence'])
         if kind == 'choice':
             chosen = answer.get('choice')
@@ -96,9 +126,13 @@ def validate_response(value, questions):
             clean['choice'] = chosen
         else:
             legend = answer.get('legend')
-            expected = sum(int(k) * p for k, p in probabilities.items())
+            # JSON map order is immaterial; rubric index defines the expectation.
+            bounds = _distribution_bounds({str(index): probabilities[str(index)] for index in range(len(keys))})
+            minimum = _score_extreme(bounds, highest=False)
+            maximum = _score_extreme(bounds, highest=True)
             if (not _number(answer.get('score'), 0, len(keys) - 1)
-                    or abs(answer['score'] - expected) > 0.002
+                    or answer['score'] < minimum - _rounding_error(answer['score']) - 1e-9
+                    or answer['score'] > maximum + _rounding_error(answer['score']) + 1e-9
                     or not isinstance(legend, dict) or set(legend) != keys
                     or any(not isinstance(v, str) for v in legend.values())):
                 raise JevError('response')

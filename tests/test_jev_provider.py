@@ -95,3 +95,25 @@ def test_size_bad_json_and_expired_deadline():
     with pytest.raises(JevError) as error:
         JevProvider().evaluate({}, QUESTIONS, deadline=time.monotonic()-1)
     assert error.value.code == 'deadline'
+
+
+def test_hosted_rounded_score_and_distribution_are_consistent():
+    value = copy.deepcopy(RESPONSE)
+    value['answers']['utility'].update(score=1.92,
+        probabilities={'2': .93, '0': 0., '1': .07})
+    assert validate_response(value, QUESTIONS)['answers']['utility']['score'] == 1.92
+    value['answers']['utility'].update(score=.99,
+        probabilities={'0': .33, '1': .33, '2': .33})
+    assert validate_response(value, QUESTIONS)['answers']['utility']['score'] == .99
+
+
+@pytest.mark.parametrize('probabilities,score', [
+    ({'0': .1, '1': .1, '2': .1}, .3),
+    ({'0': 0., '1': .07, '2': .93}, 1.8),
+    ({'0': .001, '1': .001, '2': .998}, 1.9),
+])
+def test_rounding_does_not_accept_impossible_mass_or_inconsistent_score(probabilities, score):
+    value = copy.deepcopy(RESPONSE)
+    value['answers']['utility'].update(probabilities=probabilities, score=score)
+    with pytest.raises(JevError, match='invalid decision'):
+        validate_response(value, QUESTIONS)

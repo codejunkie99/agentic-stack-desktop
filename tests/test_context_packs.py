@@ -181,15 +181,38 @@ def test_pinned_live_chat_refreshes_only_its_source(tmp_path):
                 'content': [{'type': 'input_text', 'text': body}]}}]))
     try:
         write('Mercury launch original evidence.')
+        service.conversation_refs.knowledge = service.knowledge
+        service.conversation_refs.search(dict(workspaceId=workspace['id'], query='Mercury'))
         original = service.dispatch('context.prepare', dict(workspaceId=workspace['id'], prompt='Mercury', contextOptions={'mode': 'local'}))
         identifier = original['refs'][0]['id']
         assert identifier.startswith('live:')
         config = dict(mode='local', pinnedIds=[identifier])
         write('Mercury launch revised evidence.')
+        automatic = service.dispatch('context.prepare', dict(workspaceId=workspace['id'], prompt='Mercury', contextOptions={'mode': 'local'}))
+        assert 'revised evidence' in automatic['text'] and 'original evidence' not in automatic['text']
         changed = service.dispatch('context.prepare', dict(workspaceId=workspace['id'], prompt='Unrelated', contextOptions=config))
         assert 'revised evidence' in changed['text'] and 'original evidence' not in changed['text']
         write('Foreign secret project evidence.', tmp_path/'other')
         rejected = service.dispatch('context.prepare', dict(workspaceId=workspace['id'], prompt='Mercury', contextOptions=config))
         assert rejected['refs'] == [] and rejected['warning']
+    finally:
+        service.close()
+
+
+def test_local_context_uses_native_and_cached_inventory_without_personal_discovery(tmp_path, monkeypatch):
+    service = WorkspaceService(tmp_path/'data')
+    service.knowledge.home = tmp_path/'synthetic-home'
+    project = tmp_path/'project'; project.mkdir()
+    wid = service.open_project({'path': str(project)})['id']
+    chat = service.store.create('conversation', dict(workspaceId=wid, agent='codex', title='SQLite release', mode='read-only'))
+    service.store.create('run', dict(workspaceId=wid, conversationId=chat['id'], task='SQLite release',
+        output='SQLite native reviewed release evidence.', status='completed', reviewed=True, provider='local'))
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Automatic Local context must not discover personal transcript files.')
+    monkeypatch.setattr(service.conversation_refs, '_live', forbidden)
+    try:
+        pack = service.dispatch('context.prepare', dict(workspaceId=wid, prompt='SQLite release'))
+        assert pack['mode'] == 'local' and pack['status'] == 'ready'
+        assert 'SQLite native reviewed release evidence.' in pack['text']
     finally:
         service.close()

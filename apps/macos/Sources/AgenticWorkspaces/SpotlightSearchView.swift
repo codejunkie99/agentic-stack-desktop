@@ -62,7 +62,16 @@ private struct SpotlightResult: Identifiable {
 struct SpotlightSearchView: View {
     @Bindable var model: AppModel
     var fixture: String? = nil
-    @State private var searchMode = "fast"
+    @State private var showingProviderSettings = false
+    @State private var selectedSearchMode: String?
+    private var jevAvailable: Bool { fixture.map { JevProviderStatus.fixture($0)?.isAvailable == true } ?? model.jevProviderAvailable }
+    private var searchMode: String {
+        get { selectedSearchMode ?? (jevAvailable ? "fast" : "local") }
+        nonmutating set {
+            guard JevProviderModes.allows(newValue, available: jevAvailable) else { return }
+            selectedSearchMode = newValue
+        }
+    }
     @State private var jevResponse: SpotlightJevResponse?
     @State private var jevKey = ""
     @State private var jevError = ""
@@ -100,7 +109,7 @@ struct SpotlightSearchView: View {
     private var projectKey: String { model.handoverPreviewKey }
     private var searchKey: String {
         [projectKey, category.rawValue, trimmedQuery, model.spotlightTopic, String(allConversations),
-         conversationTool, conversationRole, conversationModel, searchMode].joined(separator: ":")
+         conversationTool, conversationRole, conversationModel, searchMode, String(jevAvailable)].joined(separator: ":")
     }
     private var limit: Int { category == .all ? 5 : 40 }
     private var searching: Bool { searchingMemory || searchingConversations || searchingJev }
@@ -221,8 +230,10 @@ struct SpotlightSearchView: View {
             previewJev = nil; jevResponse = nil; jevKey = ""; previewSkill = nil; previewReference = nil; previewContent = ""; previewClaim = nil; notes = []; claims = []; references = []; skills = []
             conversationModels = []; conversationModel = ""
         }
+        .sheet(isPresented: $showingProviderSettings) { JevProviderSettingsView(model: model) }
         .task(id: searchKey) { await search() }
         .task(id: projectKey) { await loadSkills() }
+        .task(id: model.jevProviderHostKey) { await model.refreshJevProviderStatus() }
         .task(id: previewSkill?.id) { await loadSkillPreview() }
         .accessibilityIdentifier("spotlight-search")
     }
@@ -232,9 +243,13 @@ struct SpotlightSearchView: View {
             HStack {
                 Text("Search workspace").font(StackType.heading).fixedSize().accessibilityAddTraits(.isHeader)
                 Spacer()
-                Picker("Content search mode", selection: $searchMode) {
-                    Text("Ultra-fast (Jev)").tag("fast")
-                    Text("Jev standard").tag("standard")
+                Picker("Content search mode", selection: Binding(get: { searchMode }, set: { searchMode = $0 })) {
+                    if JevProviderModes.shows("fast", selected: searchMode, available: jevAvailable) {
+                        Text(jevAvailable ? "Ultra-fast (Jev)" : "Ultra-fast (Jev) · Unavailable").tag("fast")
+                    }
+                    if JevProviderModes.shows("standard", selected: searchMode, available: jevAvailable) {
+                        Text(jevAvailable ? "Jev standard" : "Jev standard · Unavailable").tag("standard")
+                    }
                     Text("Local search").tag("local")
                 }.labelsHidden().frame(width: 172).accessibilityLabel("Content search mode")
                 StackIconButton(title: "Close search", symbol: "xmark") { dismiss() }
@@ -514,8 +529,8 @@ struct SpotlightSearchView: View {
             if searchMode != "local", !jevFiltersSupported {
                 Button("Clear local filters") { allConversations = false; conversationTool = ""; conversationRole = ""; conversationModel = ""; focusRequest += 1 }.fixedSize()
             }
-            if jevKey == searchKey, jevResponse?.status == "unavailable", fixture == nil {
-                Button("Provider settings") { dismiss(); model.section = .memory; model.jevProviderSetupRequested = true }.fixedSize()
+            if !jevAvailable || jevKey == searchKey && jevResponse?.status == "unavailable" {
+                Button("Provider settings") { showingProviderSettings = true }.fixedSize()
             }
             Spacer(minLength: 8)
             if jevKey == searchKey, let elapsed = requestElapsedMs {
@@ -528,7 +543,11 @@ struct SpotlightSearchView: View {
     }
     private var contentSearchMessage: String {
         if [.work, .skills, .actions].contains(category) { return "Instant local navigation" }
-        if searchMode == "local" { return "Local content search · Actions and work navigation remain instant" }
+        if searchMode == "local" {
+            if !jevAvailable { return (fixture != nil ? "Synthetic · " : "") + model.jevProviderStatusMessage + " · Local search available" }
+            return "Local content search · Actions and work navigation remain instant"
+        }
+        if !jevAvailable { return model.jevProviderStatusMessage + " · Choose Local search or connect Jev" }
         if !jevFiltersSupported { return "These conversation filters require Local search." }
         if searching { return fixture != nil ? "Synthetic Jev search in progress…" : "Jev is selecting relevant source evidence…" }
         if !jevError.isEmpty { return jevError }
@@ -536,7 +555,7 @@ struct SpotlightSearchView: View {
             let prefix = fixture != nil ? "Synthetic · " : ""
             if let warning = result.warning, !warning.isEmpty { return prefix + warning }
             switch result.status {
-            case "unavailable": return prefix + "Jev unavailable · Enable its provider in Project memory"
+            case "unavailable": return prefix + "Jev unavailable · Check provider settings"
             case "abstained": return prefix + "Jev abstained · No relevant source selected"
             default:
                 let coverage = result.coverage
@@ -578,6 +597,7 @@ struct SpotlightSearchView: View {
         jevError = ""; memoryError = ""; referencesError = ""; requestElapsedMs = nil
         searchingMemory = false; searchingConversations = false; searchingJev = false
         guard jevFiltersSupported, !trimmedQuery.isEmpty, category == .all || category == .memory || category == .conversations else { return }
+        guard jevAvailable else { jevError = "Jev is not connected. Local search remains available."; return }
         guard fixture != nil || model.selectedID != nil && model.hostReady else { jevError = "Connect a project host to search its content with Jev."; return }
         do { try await Task.sleep(for: .milliseconds(160)) } catch { return }
         guard !Task.isCancelled, key == searchKey else { return }

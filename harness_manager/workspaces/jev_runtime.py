@@ -12,6 +12,7 @@ import threading
 import time
 
 from .jev_memory import evidence_spans
+from .knowledge import clean_text
 from .jev_provider import JevError, MAX_REQUEST, _check, validate_response
 from ..transfer_bundle import scan_text_for_secrets
 
@@ -39,7 +40,7 @@ def _json(value):
 
 def _has_secrets(value):
     if isinstance(value, str):
-        return scan_text_for_secrets(value)
+        return scan_text_for_secrets(value) or bool(clean_text(value)[1])
     if isinstance(value, dict):
         return any(_has_secrets(k) or _has_secrets(v) for k, v in value.items())
     if isinstance(value, (list, tuple)):
@@ -369,7 +370,7 @@ class JevRuntime:
             result['decisions'].append(dict(id=row['id'], action=action, reason=reason))
         # Dependencies were not necessarily Jev-evaluated. Scan every selected
         # complete unit too, before returning it for future context injection.
-        if scan_text_for_secrets(_json(list(chosen.values()))):
+        if _has_secrets(list(chosen.values())):
             raise ValueError('Remove credentials from selected skill dependencies.')
         result.update(skills=[dict(s, digest=_digest(s['body'])) for s in chosen.values()], selectedIds=list(chosen),
                       contextText='\n\n'.join(s['body'] for s in chosen.values()))
@@ -579,7 +580,7 @@ def _safe_code_read(path, root):
         body = data.decode('utf-8')
     except UnicodeError:
         return None
-    if '\x00' in body or scan_text_for_secrets(body):
+    if '\x00' in body or _has_secrets(body):
         return None
     return body
 

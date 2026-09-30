@@ -36,6 +36,8 @@ class JevSettings:
         value = self.read()
         return {'enabled': value.get('enabled') is True,
                 'configured': bool(value.get('token')),
+                'consent': value.get('consent') is True,
+                'available': _configured_provider(value).available,
                 'model': value.get('model', 'jev-latest'),
                 'endpoint': 'https://api.typesafe.ai/v1/systemone'}
 
@@ -71,17 +73,20 @@ class JevSettings:
         return self.status()
 
 
+def _configured_provider(value, *, transport=None):
+    try:
+        return JevProvider(token=value.get('token', ''), model=value.get('model', 'jev-latest'),
+            enabled=value.get('enabled') is True and value.get('consent') is True, transport=transport)
+    except ValueError:
+        return JevProvider()
+
+
 class ConfiguredJevProvider:
     def __init__(self, settings, *, transport=None):
         self.settings, self.transport = settings, transport
 
     def _provider(self):
-        value = self.settings.read()
-        try:
-            return JevProvider(token=value.get('token', ''), model=value.get('model', 'jev-latest'),
-                enabled=value.get('enabled') is True and value.get('consent') is True, transport=self.transport)
-        except ValueError:
-            return JevProvider()
+        return _configured_provider(self.settings.read(), transport=self.transport)
 
     @property
     def available(self):

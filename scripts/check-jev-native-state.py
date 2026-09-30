@@ -13,6 +13,8 @@ search_types = search_source[search_source.index('struct SpotlightJevMatch:'):se
 models = (root / 'apps/macos/Sources/AgenticWorkspaces/Models.swift').read_text()
 origins = models[models.index('struct RunMemoryOrigin:'):models.index('struct RunMemoryOrigin:') + models[models.index('struct RunMemoryOrigin:'):].index('\n')]
 context_options = models[models.index('struct ContextOptions:'):models.index('struct ContextPack:')]
+provider_source = (root / 'apps/macos/Sources/AgenticWorkspaces/JevProviderSettingsView.swift').read_text()
+provider_status = provider_source[provider_source.index('struct JevProviderStatus:'):provider_source.index('struct JevProviderSettingsView:')]
 checks = r'''
 @main struct StateCheck {
     @MainActor static func main() async throws {
@@ -43,6 +45,26 @@ checks = r'''
         let payload = #"{"status":"unavailable","decisions":[],"coverage":{"candidateCount":0,"evaluatedCount":0,"omittedCount":0,"exhaustive":false},"toolDecisions":[],"providerCalls":0}"#
         let decoded = try JSONDecoder().decode(JevContextPlan.self, from: Data(payload.utf8))
         assert(decoded.status == "unavailable" && decoded.coverage?.evaluatedCount == 0)
+        let noConsent = try JSONDecoder().decode(JevProviderStatus.self, from: Data(#"{"configured":true,"enabled":true,"model":"jev"}"#.utf8))
+        assert(!noConsent.isAvailable)
+        let denied = try JSONDecoder().decode(JevProviderStatus.self, from: Data(#"{"configured":true,"enabled":true,"consent":false,"available":true}"#.utf8))
+        assert(!denied.isAvailable)
+        assert(JevProviderStatus.fixture("settings-connected")?.isAvailable == true)
+        assert(JevProviderStatus.fixture("provider-missing")?.isAvailable == false)
+        assert(JevProviderStatus.fixture("provider-disabled")?.isAvailable == false)
+        assert(JevProviderStatus.fixture("provider-checking") == nil)
+        for mode in ["fast", "standard", "jev-fast", "jev"] {
+            assert(!JevProviderModes.allows(mode, available: false))
+            assert(JevProviderModes.allows(mode, available: true))
+            assert(!JevProviderModes.shows(mode, selected: "local", available: false))
+            assert(JevProviderModes.shows(mode, selected: mode, available: false))
+        }
+        for mode in ["local", "off", "agent"] {
+            assert(JevProviderModes.allows(mode, available: false))
+            assert(JevProviderModes.shows(mode, selected: "local", available: false))
+        }
+        assert(ContextOptions.defaultForProvider(available: false).mode == "local")
+        assert(ContextOptions.defaultForProvider(available: true).mode == "jev-fast")
         var options = ContextOptions()
         assert(options.mode == "jev-fast" && options.params["timeoutSeconds"] as? Int == 5)
         options.mode = "jev"
@@ -60,7 +82,7 @@ checks = r'''
 '''
 with tempfile.TemporaryDirectory(prefix='jev-native-state-') as directory:
     swift = Path(directory) / 'check.swift'
-    swift.write_text('import Foundation\nimport Observation\n' + state + search_types + origins + "\n" + context_options + fixtures + checks)
+    swift.write_text('import Foundation\nimport Observation\n' + state + search_types + provider_status + origins + "\n" + context_options + fixtures + checks)
     binary = Path(directory) / 'check'
     subprocess.run(['swiftc', '-parse-as-library', str(swift), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

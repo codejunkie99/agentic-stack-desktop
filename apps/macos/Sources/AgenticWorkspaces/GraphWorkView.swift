@@ -48,12 +48,26 @@ struct ContextOptionsView: View {
     @Bindable var model: AppModel
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Retrieval", selection: $model.contextOptions.mode) {
-                Text("Ultra-fast (Jev)").tag("jev-fast")
-                Text("Jev memory").tag("jev")
+            Picker("Retrieval", selection: Binding(get: { model.contextOptions.mode }, set: { mode in
+                guard JevProviderModes.allows(mode, available: model.jevProviderAvailable) else { return }
+                model.contextOptions.mode = mode
+            })) {
+                if JevProviderModes.shows("jev-fast", selected: model.contextOptions.mode, available: model.jevProviderAvailable) {
+                    Text(model.jevProviderAvailable ? "Ultra-fast (Jev)" : "Ultra-fast (Jev) · Unavailable").tag("jev-fast")
+                }
+                if JevProviderModes.shows("jev", selected: model.contextOptions.mode, available: model.jevProviderAvailable) {
+                    Text(model.jevProviderAvailable ? "Jev memory" : "Jev memory · Unavailable").tag("jev")
+                }
                 Text("Local search").tag("local")
                 Text("Retrieval agent").tag("agent")
                 Text("Off").tag("off")
+            }
+            if !model.jevProviderAvailable {
+                Text(model.jevProviderStatusMessage).font(StackType.caption).foregroundStyle(Palette.secondary)
+                Button("Provider settings…") { model.showingJevProviderSettings = true }.disabled(!model.hostReady)
+                if ["jev", "jev-fast"].contains(model.contextOptions.mode) {
+                    Text("This saved Jev mode is unavailable. Choose Local search or connect its provider.").font(StackType.caption).foregroundStyle(Palette.secondary)
+                }
             }
             if model.contextOptions.mode != "off" {
                 Picker("Context budget", selection: $model.contextOptions.tokenBudget) {

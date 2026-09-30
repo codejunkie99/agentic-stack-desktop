@@ -182,6 +182,7 @@ struct SettingsView: View {
     @State private var key = ""
     @State private var message = ""
     @State private var checking = false
+    @State private var showingJevSetup = false
 
     var body: some View {
         Form {
@@ -197,6 +198,17 @@ struct SettingsView: View {
                     Button("Check for Updates…") { updater.checkForUpdates() }
                 }
                 Text("Agentic Stack checks its signed GitHub release feed. Sparkle asks before enabling automatic checks and verifies every update archive before installation.").font(StackType.caption).foregroundStyle(Palette.secondary)
+            }
+            Section("Jev · TypeSafe") {
+                LabeledContent("Provider") { Text(model.jevProviderStatusMessage).font(StackType.caption).foregroundStyle(Palette.secondary) }
+                Text("Ultra-fast retrieval and Jev content search are available when this host has an enabled TypeSafe key and hosted processing permission. Local search remains available.").font(StackType.caption).foregroundStyle(Palette.secondary)
+                HStack {
+                    Button(model.currentJevProviderStatus?.configured == true ? "Change key / Provider settings…" : "Add TypeSafe key…") { showingJevSetup = true }
+                        .disabled(!model.hostReady)
+                    Button("Refresh status", systemImage: "arrow.clockwise") { Task { await model.refreshJevProviderStatus() } }
+                        .disabled(!model.hostReady || model.jevProviderStatusLoading)
+                    if model.jevProviderStatusLoading { ProgressView().controlSize(.small) }
+                }
             }
             Section("Memory") {
                 Toggle("Show routine activity in the knowledge graph", isOn: $includeActivity)
@@ -248,5 +260,7 @@ struct SettingsView: View {
                 Text("Made by Avidlive").font(StackType.caption).foregroundStyle(Palette.secondary)
             }
         }.formStyle(.grouped).frame(maxWidth: .infinity, maxHeight: .infinity)
+            .task(id: model.jevProviderHostKey) { await model.refreshJevProviderStatus() }
+            .sheet(isPresented: $showingJevSetup) { JevProviderSettingsView(model: model) }
     }
 }

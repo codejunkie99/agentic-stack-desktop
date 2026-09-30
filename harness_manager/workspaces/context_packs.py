@@ -102,19 +102,29 @@ def build_pack(rows, config, *, fallback='', elapsed_ms=0, cache_hit=False):
                     if config['mode'] == 'agent' else '')
 
 
-def conversation_candidates(references, wid, prompt, exclude=''):
+def conversation_candidates(references, wid, prompt, exclude='', *, discover=True):
     """Use the existing cached chat index; automatic context is project scoped."""
     workspace = references.store.get('workspace', wid)
     path = workspace.get('projectPath')
-    live = [r for r in references._live() if path and r.get('projectPath') == path]
+    # Local automatic context uses only the already-discovered chat inventory.
+    # Explicit library search owns external transcript discovery; starting a task
+    # must not enumerate a personal history store before it can reach the runner.
+    inventory = references._live() if discover else list(getattr(references, '_cache', []))
+    live = [r for r in inventory if path and r.get('projectPath') == path
+            and (discover or r['id'].startswith(('live:codex-session:', 'live:claude-session:', 'live:cursor-session:')))]
     rows = references._native(wid) + live
     rows = [r for r in rows if r['id'] != 'native:' + exclude]
     live_map = {r['id']: r for r in live}
     result = []
     for row in _rank_rows(rows, query=prompt[:300])[:12]:
         try:
-            meta, body = (references._native_context(wid, row['id']) if row['id'].startswith('native:') else
-                          references._live_context(wid, row['id'], live_map))
+            if row['id'].startswith('native:'):
+                meta, body = references._native_context(wid, row['id'])
+            elif discover:
+                meta, body = references._live_context(wid, row['id'], live_map)
+            else:
+                meta = conversation_note(references, wid, row['id'])
+                body = meta['body']
         except ValueError:
             continue
         if body:
@@ -130,7 +140,7 @@ def conversation_note(references, wid, identifier):
     elif identifier.startswith('live:'):
         workspace = references.store.get('workspace', wid)
         path = workspace.get('projectPath')
-        row = next((r for r in references._live() if r['id'] == identifier and path and r.get('projectPath') == path), None)
+        row = next((r for r in getattr(references, '_cache', []) if r['id'] == identifier and path and r.get('projectPath') == path), None)
         if row is None:
             raise ValueError('Pinned conversation is unavailable in this project.')
         provider = identifier.split(':', 2)[1]
@@ -240,7 +250,8 @@ class ContextPacks:
         sources = MemorySources(graph, conversations=conversations, exclude_conversation=exclude_conversation)
         rows = sources.accepted_candidates(wid, prompt) + graph.candidates(wid, prompt, limit=80)
         if conversations is not None:
-            chats = conversation_candidates(conversations, wid, prompt, exclude_conversation)
+            chats = conversation_candidates(conversations, wid, prompt, exclude_conversation,
+                discover=config['mode'] != 'local')
             # Represent both source kinds before applying the working-context budget.
             rows = [item for index in range(max(len(rows), len(chats)))
                     for item in ([rows[index]] if index < len(rows) else []) + ([chats[index]] if index < len(chats) else [])]
