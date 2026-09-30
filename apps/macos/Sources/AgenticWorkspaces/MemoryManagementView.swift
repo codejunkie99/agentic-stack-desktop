@@ -47,11 +47,11 @@ struct MemoryManagementView: View {
             VStack(alignment: .leading, spacing: 24) {
                 HStack {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Lessons for future work").font(.headline)
-                        Text("Review candidate lessons before they guide future work. Every decision retains its reason and history.").foregroundStyle(.secondary)
+                        Text("Lessons").font(StackType.title)
+                        Text("Review what agents learn before it guides future work. Each decision keeps its evidence and history.").foregroundStyle(Palette.secondary)
                     }
                     Spacer()
-                    Button("Stage a lesson", systemImage: "plus") { decision = MemoryDecision(operation: "teach", recordID: "", digest: "", claim: "", detail: "") }.buttonStyle(.borderedProminent)
+                    Button("Stage a lesson", systemImage: "plus") { decision = MemoryDecision(operation: "teach", recordID: "", digest: "", claim: "", detail: "") }.buttonStyle(.borderedProminent).tint(Palette.accent)
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack { recallControls; managementControls }
@@ -70,7 +70,7 @@ struct MemoryManagementView: View {
                         ForEach(rows) { lesson in
                             VStack(alignment: .leading, spacing: 14) {
                                 HStack(alignment: .top) {
-                                    Text(lesson.claim).font(.headline).textSelection(.enabled)
+                                    Text(lesson.claim).font(StackType.heading).textSelection(.enabled)
                                     Spacer()
                                     StatusLabel(title: lesson.status.capitalized)
                                 }
@@ -87,16 +87,16 @@ struct MemoryManagementView: View {
                         if rows.isEmpty { empty(category == "staged" ? "The review queue is clear. Stage a lesson or review candidates produced by the stack." : "No rejected candidates.") }
                         ForEach(rows) { candidate in
                             VStack(alignment: .leading, spacing: 14) {
-                                Text(candidate.claim).font(.headline).textSelection(.enabled)
+                                Text(candidate.claim).font(StackType.heading).textSelection(.enabled)
                                 if !candidate.conditions.isEmpty {
-                                    Text("Applies to: " + candidate.conditions.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                                    Text("Applies to: " + candidate.conditions.joined(separator: ", ")).font(StackType.caption).foregroundStyle(Palette.secondary)
                                 }
                                 DisclosureGroup("Evidence and decision history") {
                                     Text(candidate.detail).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
                                 }
                                 HStack {
                                     if candidate.status == "staged" {
-                                        Button("Accept…") { choose("graduate", candidate) }.buttonStyle(.borderedProminent)
+                                        Button("Accept…") { choose("graduate", candidate) }.buttonStyle(.borderedProminent).tint(Palette.accent)
                                         Button("Reject…") { choose("reject", candidate) }
                                     } else {
                                         Button("Reopen…") { choose("reopen", candidate) }
@@ -106,7 +106,7 @@ struct MemoryManagementView: View {
                         }
                     }
                 } else if loading { ProgressView("Reading project memory…") }
-                else if !model.hostReady { Text("Waiting for the host connection…").font(.callout).foregroundStyle(.secondary) }
+                else if !model.hostReady { Text("Waiting for the host connection…").font(StackType.detail).foregroundStyle(Palette.secondary) }
                 if !message.isEmpty {
                     Divider()
                     Text(message).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
@@ -131,7 +131,7 @@ struct MemoryManagementView: View {
             Button("Refresh", systemImage: "arrow.clockwise") { Task { await reload() } }.disabled(loading || !model.hostReady)
         }
     }
-    private func empty(_ text: String) -> some View { Text(text).foregroundStyle(.secondary).padding(.vertical, 32) }
+    private func empty(_ text: String) -> some View { Text(text).foregroundStyle(Palette.secondary).padding(.vertical, 32) }
     private func choose(_ operation: String, _ item: MemoryCandidate) {
         decision = MemoryDecision(operation: operation, recordID: item.id, digest: item.digest, claim: item.claim, detail: item.detail)
     }
@@ -181,15 +181,15 @@ private struct MemoryDecisionSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             Text(decision.title).font(.title2.weight(.semibold))
             if decision.operation == "teach" {
-                Text("Write a reusable rule. It enters the review queue before becoming accepted memory.").foregroundStyle(.secondary)
-                TextEditor(text: $claim).frame(height: 120).padding(8).overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.line))
+                Text("Write a reusable rule. It enters the review queue before becoming accepted memory.").foregroundStyle(Palette.secondary)
+                TextEditor(text: $claim).accessibilityLabel("Lesson").frame(height: 120).padding(8).overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.line))
             } else {
-                Text(decision.claim).font(.headline).textSelection(.enabled)
+                Text(decision.claim).font(StackType.heading).textSelection(.enabled)
                 ScrollView { Text(decision.detail).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 200)
             }
-            Text("Reason for this decision").font(.headline)
-            TextField("Explain the evidence or change in circumstances.", text: $rationale, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder)
-            if !message.isEmpty { Text(message).font(.callout).foregroundStyle(Palette.accent) }
+            Text("Reason for this decision").font(StackType.heading)
+            TextField("Reason for this decision", text: $rationale, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder)
+            if !message.isEmpty { Text(message).font(StackType.detail).foregroundStyle(Palette.link) }
             HStack {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
@@ -202,7 +202,7 @@ private struct MemoryDecisionSheet: View {
                             dismiss()
                         } catch { message = error.localizedDescription }
                     }
-                }.buttonStyle(.borderedProminent).disabled(busy || rationale.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (decision.operation == "teach" && claim.count < 20))
+                }.buttonStyle(.borderedProminent).tint(Palette.accent).disabled(busy || rationale.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (decision.operation == "teach" && claim.count < 20))
             }
         }.padding(28).frame(width: 620).interactiveDismissDisabled(busy)
             .onAppear { wid = model.selectedID; claim = decision.claim }

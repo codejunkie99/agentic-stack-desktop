@@ -7,7 +7,7 @@ final class AppUpdater {
 
     init() {
         controller = SPUStandardUpdaterController(
-            startingUpdater: true,
+            startingUpdater: !ProcessInfo.processInfo.arguments.contains("--jev-ui-fixture") && !ProcessInfo.processInfo.arguments.contains("--jev-search-fixture"),
             updaterDelegate: nil,
             userDriverDelegate: nil
         )

@@ -22,6 +22,9 @@ from .workspaces.conversation_refs import (
 )
 from .workspaces.knowledge import KnowledgeGraph
 from .workspaces.context_packs import ContextPacks
+from .workspaces.jev_context import JevContext
+from .workspaces.memory_sources import MemorySources
+from .workspaces.jev_settings import JevSettings, ConfiguredJevProvider
 from .workspaces.agent_profiles import AgentProfiles
 from .workspaces.model_router import recommend as recommend_model, routing_policy
 from .workspaces.personal_memory import profile as personal_profile
@@ -34,7 +37,9 @@ AGENT_ALIASES = {
 }
 MENTION_NAMES = {"claude-code": "Claude", "codex": "Codex", "opencode": "OpenCode", "cursor": "Cursor"}
 INSTRUCTIONS = (
-    "This is the local Agentic Stack context bridge. Whenever the user writes @ or @Claude, @Codex, "
+    "This is the local Agentic Stack context bridge. For workspace context use plan_context or prepare_context "
+    "with the default Jev decision path. An unavailable or abstained result never authorizes a local substitute. "
+    "Plans are read-only; never interpret a memory proposal as an applied write. Whenever the user writes @ or @Claude, @Codex, "
     "@OpenCode, or @Cursor to refer to earlier work, call recall_context. Also call recall_context when the user "
     "asks what another agent or subagent said, decided, found, or built. Recall can be narrowed by coding tool, "
     "model, or agent/subagent role and can include imported computer knowledge and personal project memory. "
@@ -225,12 +230,12 @@ TOOLS = [
      "annotations": {"title": "Search shared memory", "readOnlyHint": True,
                      "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}},
     {'name': 'prepare_context', 'description': (
-        'Prepare a bounded context pack from project memory and conversation history. '
-        'Use workspaceId returned by search_shared_memory. Exact excerpts, digests and sources; no writes or agent execution.'),
+        'Prepare a bounded Jev-first context pack from project memory and conversation history. '
+        'Use workspaceId returned by search_shared_memory. Exact excerpts, digests and sources; no writes or coding-agent execution. Jev mode uses only an explicitly enabled host provider.'),
      'inputSchema': {'type': 'object', 'properties': {
          'workspaceId': {'type': 'string'}, 'prompt': {'type': 'string', 'maxLength': 12000},
          'contextOptions': {'type': 'object', 'properties': {
-             'mode': {'type': 'string', 'enum': ['off', 'local'], 'default': 'local'},
+             'mode': {'type': 'string', 'enum': ['off', 'local', 'jev', 'jev-fast'], 'default': 'jev'},
              'tokenBudget': {'type': 'integer', 'minimum': 256, 'maximum': 12000},
              'pinnedIds': {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 40},
              'excludeIds': {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 40}}, 'additionalProperties': False}},
@@ -262,11 +267,84 @@ TOOLS = [
 ]
 
 
+# The bridge offers planning only. Durable apply is deliberately absent from
+# the tool catalog and dispatcher; only the explicit desktop review can write.
+TOOLS.append({'name': 'plan_context', 'description': (
+    'Use Jev in one bounded call to plan exact project context, retention/eviction, explicit memory '
+    'proposals and read-only tool guidance. Explicit update requires incoming text and targetIds for same-call remember/forget. This tool never applies memory changes or edits a private transcript. '
+    'Use selectedIds/evictedIds only in host-owned reference context. Always preserve retainedIds; '
+    'retainedOutsideBudgetIds must stay in the host separately because bounded contextText is not a complete replacement. '
+    'Unavailable and abstained decisions preserve active context. Preserve protected instructions.'),
+    'inputSchema': {'type': 'object', 'properties': {
+        'workspaceId': {'type': 'string'}, 'task': {'type': 'string', 'minLength': 1, 'maxLength': 12000},
+        'tokenBudget': {'type': 'integer', 'minimum': 256, 'maximum': 12000, 'default': 2048},
+        'intent': {'type': 'string', 'enum': ['recall', 'add', 'forget', 'update'], 'default': 'recall'},
+        'targetIds': {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 16},
+        'sources': {'type': 'array', 'items': {'type': 'string', 'enum': ['memory', 'conversations', 'sources']}, 'maxItems': 3},
+        **{name: {'type': 'array', 'maxItems': 16, 'items': {'type': 'object', 'properties': {
+            'id': {'type': 'string'}, 'title': {'type': 'string'}, 'body': {'type': 'string', 'maxLength': 12000},
+            'source': {'type': 'string'}, 'role': {'type': 'string', 'enum': ['reference', 'system', 'developer', 'user', 'assistant', 'tool']},
+            'protected': {'type': 'boolean'}}, 'required': ['id', 'title', 'body'], 'additionalProperties': False}}
+           for name in ('activeContext', 'incoming')}},
+        'required': ['workspaceId', 'task'], 'additionalProperties': False},
+    'annotations': {'title': 'Plan context with Jev', 'readOnlyHint': True, 'destructiveHint': False,
+                    'idempotentHint': False, 'openWorldHint': False}})
+
+
+RUNTIME_METHODS = {
+    'compact_trace': 'memory.trace.compact', 'select_skills': 'memory.skills.select',
+    'plan_tools': 'memory.tools.plan', 'verify_citations': 'memory.citations.verify',
+    'search_code': 'memory.code.search',
+}
+_RUNTIME_COMMON = {
+    'workspaceId': {'type': 'string'},
+    'timeoutSeconds': {'type': 'integer', 'minimum': 1, 'maximum': 60},
+}
+_RUNTIME_BUDGET = {
+    'tokenBudget': {'type': 'integer', 'minimum': 256, 'maximum': 12000, 'default': 2048},
+    'cursor': {'type': 'integer', 'minimum': 0, 'default': 0},
+}
+_RUNTIME_EVIDENCE = {'type': 'object', 'properties': {
+    'id': {'type': 'string'}, 'body': {'type': 'string', 'maxLength': 12000},
+    'source': {'type': 'string'}}, 'required': ['id', 'body', 'source'], 'additionalProperties': False}
+for _name, _description, _properties, _required in [
+    ('compact_trace', 'Select exact trace spans with Jev for a bounded extractive compaction. No generated summary or history deletion.',
+        {'task': {'type': 'string', 'maxLength': 12000}, 'body': {'type': 'string', 'maxLength': 200000}, **_RUNTIME_BUDGET}, ['task', 'body']),
+    ('select_skills', 'Select exact caller-supplied skill context with Jev. Skill selection does not grant tools or execute embedded instructions.',
+        {'task': {'type': 'string', 'maxLength': 12000}, 'skills': {'type': 'array', 'maxItems': 100, 'items': {
+            'type': 'object', 'properties': {'id': {'type': 'string'}, 'title': {'type': 'string'},
+            'body': {'type': 'string', 'maxLength': 12000}, 'requires': {'type': 'array', 'items': {'type': 'string'}}},
+            'required': ['id', 'title', 'body'], 'additionalProperties': False}}, **_RUNTIME_BUDGET}, ['task', 'skills']),
+    ('plan_tools', 'Use Jev to choose among exact, typed tool argument candidates validated against this bridge catalog. Returns a read-only proposal; never executes tools.',
+        {'task': {'type': 'string', 'maxLength': 12000}, 'candidates': {'type': 'array', 'maxItems': 16, 'items': {
+            'type': 'object', 'properties': {'id': {'type': 'string'}, 'function': {'type': 'string'},
+            'arguments': {'type': 'object'}}, 'required': ['id', 'function', 'arguments'], 'additionalProperties': False}}}, ['task', 'candidates']),
+    ('verify_citations', 'Evaluate whether exact supplied evidence supports a claim with Jev. Returns evidence identities and uncertainty; no independent external fact verification.',
+        {'task': {'type': 'string', 'maxLength': 12000}, 'claim': {'type': 'string', 'maxLength': 12000},
+         'evidence': {'type': 'array', 'maxItems': 100, 'items': _RUNTIME_EVIDENCE}, 'cursor': _RUNTIME_BUDGET['cursor']}, ['claim', 'evidence']),
+    ('search_code', 'Search only the attached workspace project with bounded host code discovery and Jev semantic selection of exact snippets. Reports shortlist/page limits; ignores hidden/config/auth/chat paths.',
+        {'workspaceId': {'type': 'string'}, 'task': {'type': 'string', 'maxLength': 12000},
+         'snippets': {'type': 'array', 'maxItems': 100, 'items': {'type': 'object', 'properties': {
+             **_RUNTIME_EVIDENCE['properties'], 'path': {'type': 'string'}, 'startLine': {'type': 'integer', 'minimum': 1}},
+             'required': ['id', 'body', 'source'], 'additionalProperties': False}}, **_RUNTIME_BUDGET,
+         'cursor': {'type': 'object', 'properties': {
+             'file': {'type': 'integer', 'minimum': 0, 'maximum': 512},
+             'span': {'type': 'integer', 'minimum': 0}, 'snapshot': {'type': 'string'}, 'fileDigest': {'type': 'string'}},
+             'additionalProperties': False}}, ['workspaceId', 'task']),
+]:
+    TOOLS.append({'name': _name, 'description': _description,
+        'inputSchema': {'type': 'object', 'properties': {**_RUNTIME_COMMON, **_properties},
+                        'required': _required, 'additionalProperties': False},
+        'annotations': {'title': _name.replace('_', ' ').capitalize(), 'readOnlyHint': True,
+                        'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False}})
+
+
 class MCPServer:
-    def __init__(self, home=None):
+    def __init__(self, home=None, *, jev_provider=None):
         self.home = (home or Path.home()).resolve()
         self.index = LiveIndex(self.home)
-        self.context_packs = ContextPacks()
+        self.context_packs = ContextPacks(jev_provider if jev_provider is not None else
+            ConfiguredJevProvider(JevSettings(_memory_root(self.home))))
 
     def recall_context(self, arguments):
         query = arguments.get("query")
@@ -329,7 +407,32 @@ class MCPServer:
         # Reuse the server's live index cache rather than rescanning per request.
         references._live = self.index.rows
         return self.context_packs.prepare(graph, arguments.get('workspaceId'), arguments.get('prompt'),
-            arguments.get('contextOptions', {'mode': 'local'}), allow_agent=False, conversations=references)
+            arguments.get('contextOptions'), allow_agent=False, conversations=references)
+
+    def plan_context(self, arguments):
+        database = _memory_root(self.home)/'workspaces.sqlite3'
+        if not database.is_file() or database.is_symlink() or database.absolute() != database.resolve():
+            raise ValueError('Import project memory in Agentic Stack before planning shared context.')
+        graph = _ReadOnlyGraph(database, self.home)
+        references = ConversationReferences(graph.store, graph.stack, graph)
+        references._live = self.index.rows
+        return self.context_packs.planner.plan(MemorySources(graph, conversations=references), arguments)
+
+    def runtime_context(self, name, arguments):
+        from .workspaces.jev_runtime import JevRuntime
+        project_root = None
+        if name == 'search_code' or arguments.get('workspaceId') is not None:
+            database = _memory_root(self.home)/'workspaces.sqlite3'
+            if not database.is_file() or database.is_symlink() or database.absolute() != database.resolve():
+                raise ValueError('Choose an imported attached project before shared runtime context.')
+            graph = _ReadOnlyGraph(database, self.home)
+            workspace = graph.store.get('workspace', arguments.get('workspaceId'))
+            if name == 'search_code':
+                if not workspace.get('projectPath'):
+                    raise ValueError('Choose an attached project before semantic code search.')
+                project_root = graph._root(arguments['workspaceId'])
+        return JevRuntime(self.context_packs.jev_provider).dispatch(RUNTIME_METHODS[name], arguments,
+            project_root=project_root, tool_catalog=TOOLS)
 
     @staticmethod
     def _result(value):
@@ -368,6 +471,10 @@ class MCPServer:
             if name == "search_shared_memory":
                 return self._result({"memories": search_memory(arguments.get("query"), arguments.get("limit", 10), self.home),
                                      "notice": "Imported historical evidence only; verify current claims."})
+            if name in RUNTIME_METHODS:
+                return self._result(self.runtime_context(name, arguments))
+            if name == 'plan_context':
+                return self._result(self.plan_context(arguments))
             if name == 'prepare_context':
                 return self._result(self.prepare_context(arguments))
             if name == 'recommend_model':

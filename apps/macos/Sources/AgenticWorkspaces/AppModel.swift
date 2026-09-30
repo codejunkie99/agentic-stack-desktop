@@ -38,7 +38,7 @@ struct ConversationFileAttachment: Identifiable, Hashable, Sendable {
 @MainActor @Observable
 final class AppModel {
     init() {
-        ProjectAccess.shared.restore()
+        if !ProcessInfo.processInfo.arguments.contains("--jev-ui-fixture") && !ProcessInfo.processInfo.arguments.contains("--jev-search-fixture") { ProjectAccess.shared.restore() }
     }
 
     var snapshot = Snapshot.empty
@@ -82,6 +82,14 @@ final class AppModel {
     var focusedContextReference: ContextReference?
     var requestedGraphNoteID: String?
     var graphFullPage = false
+    var jevMemoryWorkspaces: [String: JevMemoryWorkspace] = [:]
+    var jevProviderSetupRequested = false
+    var showingJevProviderSettings = false
+    var jevProviderStatus: JevProviderStatus?
+    var jevProviderStatusKey = ""
+    var jevProviderStatusError = ""
+    var jevProviderStatusLoading = false
+    private var jevProviderStatusGeneration = 0
     var contextInspectorVisible = true
     var preparingContext = false
     var contextOptionsByDraft: [String: ContextOptions] = [:]
@@ -147,6 +155,47 @@ final class AppModel {
     var selected: Workspace? { snapshot.workspaces.first { $0.id == selectedID } }
     var terminalHost: String { isRemote ? serverURL : "local" }
     var hostReady: Bool { !switchingHost }
+    var jevProviderHostKey: String { "\(hostGeneration):\(terminalHost):\(switchingHost)" }
+    var currentJevProviderStatus: JevProviderStatus? { jevProviderStatusKey == jevProviderHostKey && hostReady ? jevProviderStatus : nil }
+    var jevProviderAvailable: Bool { currentJevProviderStatus?.isAvailable == true }
+    var jevProviderStatusMessage: String {
+        if !hostReady { return "Connect a host to configure Jev" }
+        if let status = currentJevProviderStatus { return status.description }
+        if jevProviderStatusKey == jevProviderHostKey && !jevProviderStatusError.isEmpty { return jevProviderStatusError }
+        return "Checking Jev availability…"
+    }
+    var jevProviderFixture: String? {
+        let args = ProcessInfo.processInfo.arguments
+        for flag in ["--jev-search-fixture", "--jev-ui-fixture"] {
+            if let index = args.firstIndex(of: flag) { return args.indices.contains(index + 1) ? args[index + 1] : "results" }
+        }
+        return nil
+    }
+    func acceptJevProviderStatus(_ status: JevProviderStatus, key: String) {
+        guard key == jevProviderHostKey, hostReady else { return }
+        jevProviderStatusGeneration += 1
+        jevProviderStatus = status; jevProviderStatusKey = key; jevProviderStatusError = ""; jevProviderStatusLoading = false
+    }
+    func refreshJevProviderStatus() async {
+        let key = jevProviderHostKey
+        guard hostReady else { return }
+        if let fixture = jevProviderFixture {
+            jevProviderStatus = JevProviderStatus.fixture(fixture); jevProviderStatusKey = key; jevProviderStatusError = ""; jevProviderStatusLoading = fixture.hasSuffix("checking")
+            return
+        }
+        jevProviderStatusGeneration += 1
+        let generation = jevProviderStatusGeneration, host = terminalHost
+        jevProviderStatusLoading = true
+        defer { if generation == jevProviderStatusGeneration { jevProviderStatusLoading = false } }
+        do {
+            let status = try await terminalCall("memory.provider.status", [:], host: host, as: JevProviderStatus.self)
+            guard !Task.isCancelled, key == jevProviderHostKey, generation == jevProviderStatusGeneration else { return }
+            jevProviderStatus = status; jevProviderStatusKey = key; jevProviderStatusError = ""
+        } catch {
+            guard !Task.isCancelled, key == jevProviderHostKey, generation == jevProviderStatusGeneration else { return }
+            jevProviderStatus = nil; jevProviderStatusKey = key; jevProviderStatusError = "Jev status unavailable · Local search remains available"
+        }
+    }
     var handoverPreviewKey: String { "\(hostGeneration):\(terminalHost):\(selectedID ?? ""):\(switchingHost)" }
     var sources: [Source] { snapshot.sources.filter { $0.workspaceId == selectedID } }
     var runs: [AgentRun] { snapshot.runs.filter { $0.workspaceId == selectedID } }
@@ -176,7 +225,7 @@ final class AppModel {
         return workItems.first { $0.id == id }
     }
     var contextOptions: ContextOptions {
-        get { contextOptionsByDraft[conversationDraftKey] ?? ContextOptions() }
+        get { contextOptionsByDraft[conversationDraftKey] ?? ContextOptions.defaultForProvider(available: jevProviderAvailable) }
         set { contextOptionsByDraft[conversationDraftKey] = newValue; contextPreview = nil }
     }
     var validContextPreview: ContextPack? {
@@ -251,7 +300,7 @@ final class AppModel {
             let sameRunner = source?.agent == agent
             let params: [String: Any] = ["id": item.id, "agent": agent, "mode": source?.mode ?? "read-only",
                 "model": sameRunner ? source?.model ?? "" : "", "effort": sameRunner ? source?.effort ?? "" : ""]
-            let options = source.map { contextOptionsByDraft[host + ":" + item.workspaceId + ":" + $0.id] ?? ContextOptions() } ?? ContextOptions()
+            let options = source.map { contextOptionsByDraft[host + ":" + item.workspaceId + ":" + $0.id] ?? ContextOptions.defaultForProvider(available: jevProviderAvailable) } ?? ContextOptions.defaultForProvider(available: jevProviderAvailable)
             let result = try await call("work.continue", params, as: AgentConversation.self)
             await refresh()
             guard host == terminalHost, workspaceID == selectedID else { return }

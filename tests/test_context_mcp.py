@@ -45,7 +45,8 @@ def test_mcp_tools_resources_and_at_instructions_are_read_only(tmp_path):
     tools = server.handle({"method": "tools/list"})["tools"]
     assert {tool["name"] for tool in tools} == {
         "recall_context", "search_conversations", "read_conversation", "search_shared_memory", "prepare_context",
-        "recommend_model", "read_personal_memory"}
+        "recommend_model", "read_personal_memory", "plan_context",
+        "compact_trace", "select_skills", "plan_tools", "verify_citations", "search_code"}
     assert all(tool["annotations"]["readOnlyHint"] is True for tool in tools)
     search_schema = next(tool for tool in tools if tool["name"] == "search_conversations")["inputSchema"]["properties"]
     assert {"model", "role", "context", "preferredAgent", "preferredModel"}.issubset(search_schema)

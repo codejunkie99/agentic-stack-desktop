@@ -27,7 +27,7 @@ struct AgentModelPicker: View {
                 ForEach(efforts, id: \.self) { Text($0.capitalized).tag($0) }
             }
             Text(runner == "codex" ? "Models come from this host’s configured Codex catalog, with the local cache as a fallback. You can also enter a model ID for your provider." : "Aliases use your existing Claude account or provider. Runner default selects the account’s default model. Availability and effort limits follow that account.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(StackType.caption).foregroundStyle(Palette.secondary)
         }.onChange(of: runner) { _, _ in modelID = ""; effort = ""; custom = false }
     }
 }
@@ -53,11 +53,11 @@ struct InlineModelPicker: View {
     var body: some View {
         Button { presented.toggle() } label: {
             HStack(spacing: 5) {
-                Image(systemName: isAuto ? "point.3.connected.trianglepath.dotted" : "bolt.fill").font(.system(size: 10))
+                Image(systemName: isAuto ? "point.3.connected.trianglepath.dotted" : "bolt.fill").font(.system(size: 12))
                 Text(modelName).lineLimit(1).truncationMode(.middle)
                 if !isAuto && !selection.effort.isEmpty { Text(effortName(selection.effort)).foregroundStyle(effortColor(selection.effort)) }
                 Image(systemName: "chevron.down").font(.system(size: 8, weight: .semibold))
-            }.font(.caption).padding(.horizontal, 8).padding(.vertical, 5)
+            }.font(StackType.caption).padding(.horizontal, 8).padding(.vertical, 5)
                 .background(Palette.line.opacity(0.45), in: Capsule())
         }.buttonStyle(.plain).frame(maxWidth: 245)
             .accessibilityLabel(isAuto ? "Change model routing: " + modelName : "Change model and effort: " + modelName + ", " + effortName(selection.effort))
@@ -133,8 +133,8 @@ private struct InlineModelPopover: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Choose how this message runs").font(.headline)
-                    Text(runner == "codex" ? "Codex" : "Claude Code").font(.caption).foregroundStyle(.secondary)
+                    Text("Choose how this message runs").font(StackType.heading)
+                    Text(runner == "codex" ? "Codex" : "Claude Code").font(StackType.caption).foregroundStyle(Palette.secondary)
                 }
                 Spacer()
                 Button { Task { await refresh() } } label: { Image(systemName: "arrow.clockwise") }
@@ -149,9 +149,9 @@ private struct InlineModelPopover: View {
             }.pickerStyle(.segmented).labelsHidden()
 
             if isAuto { automaticRouter } else { fixedModels }
-            if let error { Text(error).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
-            if saving { ProgressView("Updating…").controlSize(.small).font(.caption) }
-            if !catalogWarning.isEmpty { Text(catalogWarning).font(.caption2).foregroundStyle(.secondary) }
+            if let error { Text(error).font(StackType.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+            if saving { ProgressView("Updating…").controlSize(.small).font(StackType.caption) }
+            if !catalogWarning.isEmpty { Text(catalogWarning).font(StackType.caption).foregroundStyle(Palette.secondary) }
         }.padding(18).frame(width: 440).disabled(saving)
             .onExitCommand { dismiss() }
             .task(id: recommendationID) { await loadRecommendation() }
@@ -164,49 +164,49 @@ private struct InlineModelPopover: View {
                 Text("Balanced").tag("auto:balanced")
                 Text("Stronger").tag("auto:intelligence")
             }.pickerStyle(.segmented)
-            Text(routeDescription(selected.routing)).font(.caption).foregroundStyle(.secondary)
+            Text(routeDescription(selected.routing)).font(StackType.caption).foregroundStyle(Palette.secondary)
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("For this message", systemImage: "wand.and.stars").font(.caption.weight(.semibold))
+                    Label("For this message", systemImage: "wand.and.stars").font(StackType.caption.weight(.semibold))
                     Spacer()
                     if routing { ProgressView().controlSize(.mini) }
-                    else if let route { Text(route.complexity.capitalized).font(.caption2).foregroundStyle(.secondary) }
+                    else if let route { Text(route.complexity.capitalized).font(StackType.caption).foregroundStyle(Palette.secondary) }
                 }
                 if let route {
                     HStack(spacing: 8) {
                         Text(models.first { $0.id == route.model }?.name ?? (route.model.isEmpty ? "Runner default" : route.model))
                             .font(.system(size: 15, weight: .semibold)).lineLimit(1)
-                        if !route.effort.isEmpty { Text(modelEffortName(route.effort)).font(.caption).foregroundStyle(effortColor(route.effort)) }
+                        if !route.effort.isEmpty { Text(modelEffortName(route.effort)).font(StackType.caption).foregroundStyle(effortColor(route.effort)) }
                         Spacer()
                         if let confidence = route.confidence, confidence > 0 {
                             Text(confidence >= 0.85 ? "Strong match" : confidence >= 0.6 ? "Good match" : "Fallback")
-                                .font(.caption2).foregroundStyle(.secondary)
+                                .font(StackType.caption).foregroundStyle(Palette.secondary)
                         }
                     }
-                    Text(route.reason).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(route.reason).font(StackType.caption).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
                     if let choice = models.first(where: { $0.id == route.model }) { capabilityBadges(choice.capabilities ?? []) }
                 } else if !routing {
                     Text("Write a message to preview the model and reasoning effort before you send it.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(StackType.caption).foregroundStyle(Palette.secondary)
                 }
             }
             .padding(12).background(Palette.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Palette.accent.opacity(0.2)))
 
             Text("Auto stays on \(runner == "codex" ? "Codex" : "Claude Code") and records the chosen model with the reply.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(StackType.caption).foregroundStyle(Palette.secondary)
         }
     }
 
     private var fixedModels: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
                 TextField("Search available models", text: $search).textFieldStyle(.plain)
                 if !search.isEmpty {
                     Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Clear model search")
+                        .buttonStyle(.plain).foregroundStyle(Palette.secondary).accessibilityLabel("Clear model search")
                 }
             }.padding(.horizontal, 10).frame(height: 34)
                 .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
@@ -217,7 +217,7 @@ private struct InlineModelPopover: View {
                     ForEach(filteredModels) { item in
                         modelRow(id: item.id, title: item.name, subtitle: item.summary, capabilities: item.capabilities ?? [])
                     }
-                    if filteredModels.isEmpty { Text("No available model matches this search.").font(.caption).foregroundStyle(.secondary).padding(10) }
+                    if filteredModels.isEmpty { Text("No available model matches this search.").font(StackType.caption).foregroundStyle(Palette.secondary).padding(10) }
                 }
             }.frame(maxHeight: 270)
 
@@ -229,7 +229,7 @@ private struct InlineModelPopover: View {
                 }
             } else {
                 Text(selected.model.isEmpty ? "The runner chooses its configured reasoning effort." : "This model exposes no effort variants.")
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(StackType.caption).foregroundStyle(Palette.secondary)
             }
             DisclosureGroup("Use a model ID") {
                 HStack {
@@ -238,7 +238,7 @@ private struct InlineModelPopover: View {
                     Button("Use") { chooseModel(manualID.trimmingCharacters(in: .whitespacesAndNewlines)) }
                         .disabled(manualID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-            }.font(.caption)
+            }.font(StackType.caption)
         }
     }
 
@@ -246,12 +246,12 @@ private struct InlineModelPopover: View {
         Button { chooseModel(id) } label: {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.callout).lineLimit(1)
-                    if let subtitle { Text(subtitle).font(.caption2).foregroundStyle(.secondary) }
+                    Text(title).font(StackType.detail).lineLimit(1)
+                    if let subtitle { Text(subtitle).font(StackType.caption).foregroundStyle(Palette.secondary) }
                     capabilityBadges(capabilities)
                 }
                 Spacer()
-                if selected.routing == "fixed" && selected.model == id { Image(systemName: "checkmark").font(.caption).foregroundStyle(.secondary) }
+                if selected.routing == "fixed" && selected.model == id { Image(systemName: "checkmark").font(StackType.caption).foregroundStyle(Palette.secondary) }
             }.padding(.vertical, 7).padding(.horizontal, 5).contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
@@ -267,7 +267,7 @@ private struct InlineModelPopover: View {
         HStack(spacing: 5) {
             ForEach(values.filter { ["image", "files", "tools"].contains($0) }, id: \.self) { value in
                 Text(value == "image" ? "VISION" : value.uppercased()).font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.secondary).padding(.horizontal, 5).padding(.vertical, 2)
+                    .foregroundStyle(Palette.secondary).padding(.horizontal, 5).padding(.vertical, 2)
                     .background(Palette.line.opacity(0.55), in: Capsule())
             }
         }
@@ -330,7 +330,7 @@ struct AgentEditorView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(profile == nil ? "Create an agent" : "Edit \(profile!.name)").font(.title2.weight(.semibold))
-                Text("Give it a role, choose how it runs, and start a conversation in any project.").font(.callout).foregroundStyle(.secondary)
+                Text("Give it a role, choose how it runs, and start a conversation in any project.").font(StackType.detail).foregroundStyle(Palette.secondary)
             }.padding(24)
             Divider()
             ScrollView {
@@ -338,11 +338,11 @@ struct AgentEditorView: View {
                     TextField("Agent name", text: $name).textFieldStyle(.roundedBorder)
                     TextField("Role · for example, Code reviewer", text: $role).textFieldStyle(.roundedBorder)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Instructions").font(.headline)
+                        Text("Instructions").font(StackType.heading)
                         TextEditor(text: $instructions).font(.body).frame(minHeight: 125)
                             .padding(6).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.line)).accessibilityLabel("Agent instructions")
-                        Text("Describe its responsibilities and how it should respond. Project rules and the access setting below still apply.").font(.caption).foregroundStyle(.secondary)
+                        Text("Describe its responsibilities and how it should respond. Project rules and the access setting below still apply.").font(StackType.caption).foregroundStyle(Palette.secondary)
                     }
                     Divider()
                     Picker("Runner", selection: $runner) {
@@ -350,12 +350,12 @@ struct AgentEditorView: View {
                     }
                     AgentModelPicker(runner: runner, choices: model.availableModels, modelID: $modelID, effort: $effort)
                     if model.modelsError != nil {
-                        HStack { Text("Model list unavailable; configured default and manual IDs still work.").font(.caption); Button("Retry") { Task { await model.loadModels() } } }
+                        HStack { Text("Model list unavailable; configured default and manual IDs still work.").font(StackType.caption); Button("Retry") { Task { await model.loadModels() } } }
                     }
                     Picker("File access", selection: $mode) {
                         Text("Read only").tag("read-only"); Text("Edit project files").tag("workspace-write")
                     }
-                    if profile != nil { Text("Changes apply to new conversations. Existing conversations keep their original agent settings.").font(.caption).foregroundStyle(.secondary) }
+                    if profile != nil { Text("Changes apply to new conversations. Existing conversations keep their original agent settings.").font(StackType.caption).foregroundStyle(Palette.secondary) }
                     if let error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
                 }.padding(24)
             }
@@ -365,7 +365,7 @@ struct AgentEditorView: View {
                 Spacer()
                 if saving { ProgressView().controlSize(.small) }
                 Button(profile == nil ? "Create agent" : "Save agent") { Task { await save() } }
-                    .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent).tint(Palette.accent).keyboardShortcut(.defaultAction)
                     .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }.padding(20)
         }.frame(width: DesktopSizing.sheetWidth(540), height: DesktopSizing.sheetHeight(640)).interactiveDismissDisabled(saving)

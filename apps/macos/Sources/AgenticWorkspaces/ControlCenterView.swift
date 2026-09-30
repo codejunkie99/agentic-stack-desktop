@@ -27,7 +27,7 @@ struct StackAction: Identifiable {
         .init(id: "cli-setup", title: "Original setup wizard", detail: "The repository’s complete interactive setup flow", symbol: "terminal", terminal: "stack-onboard")
     ]
     static var all: [StackAction] {
-        DesktopSection.allCases.filter { $0 != .overview }.map {
+        DesktopSection.allCases.map {
             .init(id: "section-" + $0.id, title: $0.searchTitle, detail: $0.searchDetail, symbol: $0.symbol, section: $0)
         } + commands
     }

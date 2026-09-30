@@ -21,8 +21,8 @@ struct NativeSpotlightField: NSViewRepresentable {
         field.isBezeled = false
         field.isBordered = false
         field.drawsBackground = false
-        field.focusRingType = .none
-        field.font = .systemFont(ofSize: 21)
+        field.focusRingType = .default
+        field.font = .systemFont(ofSize: 18)
         field.textColor = .labelColor
         field.cell?.usesSingleLineMode = true
         field.lineBreakMode = .byTruncatingTail
@@ -36,7 +36,9 @@ struct NativeSpotlightField: NSViewRepresentable {
     func updateNSView(_ field: SpotlightNativeTextField, context: Context) {
         context.coordinator.parent = self
         field.canFocus = canFocus
-        field.placeholderString = placeholder
+        field.placeholderAttributedString = NSAttributedString(string: placeholder, attributes: [
+            .foregroundColor: NSColor(Palette.secondary), .font: NSFont.systemFont(ofSize: 18)
+        ])
         field.setAccessibilityLabel(accessibilityName)
         if field.stringValue != text {
             field.stringValue = text

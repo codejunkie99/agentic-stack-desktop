@@ -7,17 +7,49 @@ struct AgenticWorkspacesApp: App {
     @AppStorage("appearance") private var appearance = "system"
     @AppStorage("autoDetectTools") private var autoDetect = true
 
+    private var jevFixture: String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "--jev-ui-fixture") else { return nil }
+        return arguments.indices.contains(index + 1) ? arguments[index + 1] : "results"
+    }
+
+    private var jevSearchFixture: String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "--jev-search-fixture") else { return nil }
+        return arguments.indices.contains(index + 1) ? arguments[index + 1] : "results"
+    }
+
+    private var fixtureColorScheme: ColorScheme? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard jevFixture != nil || jevSearchFixture != nil, let index = arguments.firstIndex(of: "--jev-ui-appearance"), arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1] == "light" ? .light : arguments[index + 1] == "dark" ? .dark : nil
+    }
+
     var body: some Scene {
         WindowGroup("Agentic Stack") {
             GeometryReader { window in
-                StackDesktopRoot(model: model, updater: updater, compact: window.size.width < 1000)
+                Group {
+                    if let jevSearchFixture, jevSearchFixture.hasPrefix("settings-") {
+                        SettingsView(model: model, updater: updater)
+                    } else if let jevSearchFixture {
+                        SpotlightSearchView(model: model, fixture: jevSearchFixture)
+                            .padding(24).frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.canvas)
+                    } else if let jevFixture { JevMemoryPage(model: model, fixture: jevFixture) }
+                    else { StackDesktopRoot(model: model, updater: updater, compact: window.size.width < 1000) }
+                }
                     .frame(width: window.size.width, height: window.size.height, alignment: .topLeading)
                     .clipped()
             }
                 .frame(minWidth: 800, minHeight: 560)
-                .tint(Palette.accent)
-                .preferredColorScheme(appearance == "system" ? nil : appearance == "dark" ? .dark : .light)
+                .tint(Palette.link)
+                .font(StackType.body)
+                .foregroundStyle(Palette.text)
+                .controlSize(.regular)
+                .preferredColorScheme(jevFixture != nil || jevSearchFixture != nil ? fixtureColorScheme : appearance == "system" ? nil : appearance == "dark" ? .dark : .light)
+                .sheet(isPresented: $model.showingJevProviderSettings) { JevProviderSettingsView(model: model) }
+                .task(id: model.jevProviderHostKey) { await model.refreshJevProviderStatus() }
                 .task {
+                    guard jevFixture == nil && jevSearchFixture == nil else { return }
                     await model.refresh()
                     Task { await model.prewarmConversationReferences() }
                     if autoDetect { await model.refreshAccounts() }
@@ -28,7 +60,10 @@ struct AgenticWorkspacesApp: App {
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                    if autoDetect { Task { await model.refreshAccounts() } }
+                    if jevFixture == nil && jevSearchFixture == nil {
+                        Task { await model.refreshJevProviderStatus() }
+                        if autoDetect { Task { await model.refreshAccounts() } }
+                    }
                 }
         }
         .defaultSize(width: 1180, height: 780)
@@ -65,7 +100,7 @@ struct AgenticWorkspacesApp: App {
             }
         }
         Settings {
-            SettingsView(model: model, updater: updater).frame(width: 660, height: 650).tint(Palette.accent)
+            SettingsView(model: model, updater: updater).frame(width: 660, height: 650).tint(Palette.link)
         }
     }
     private func resizeWindow(width: CGFloat, height: CGFloat) {
@@ -77,19 +112,12 @@ struct AgenticWorkspacesApp: App {
 
 }
 
-enum Palette {
-    static let accent = Color(red: 0.43, green: 0.46, blue: 0.75)
-    static let surface = Color(nsColor: .controlBackgroundColor)
-    static let canvas = Color(nsColor: .windowBackgroundColor)
-    static let line = Color.primary.opacity(0.09)
-}
-
 struct StatusLabel: View {
     let title: String
     var active = false
     var body: some View {
         Label(title, systemImage: active ? "circle.inset.filled" : "circle")
-            .font(.system(size: 11, weight: .medium)).foregroundStyle(active ? Palette.accent : .secondary)
+            .font(.system(size: 12, weight: .medium)).foregroundStyle(active ? Palette.link : Palette.secondary)
             .padding(.horizontal, 9).padding(.vertical, 5)
             .background(Palette.surface, in: Capsule())
     }
@@ -98,7 +126,7 @@ struct StatusLabel: View {
 struct SectionEyebrow: View {
     let text: String
     var body: some View {
-        Text(text.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(1.4).foregroundStyle(.secondary)
+        Text(text).font(StackType.caption.weight(.semibold)).foregroundStyle(Palette.secondary)
     }
 }
 
@@ -108,9 +136,9 @@ struct QuietEmpty: View {
     let detail: String
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Image(systemName: symbol).font(.system(size: 28, weight: .light)).foregroundStyle(Palette.accent)
-            Text(title).font(.system(size: 24, weight: .semibold))
-            Text(detail).font(.body).foregroundStyle(.secondary).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+            Image(systemName: symbol).font(.system(size: 28, weight: .regular)).foregroundStyle(Palette.secondary)
+            Text(title).font(StackType.title).accessibilityAddTraits(.isHeader)
+            Text(detail).font(.body).foregroundStyle(Palette.secondary).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: 460, alignment: .leading)
     }
 }

@@ -102,13 +102,13 @@ struct KnowledgeFilterSpotlight: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
-                    Image(systemName: "magnifyingglass").font(.system(size: 23, weight: .light)).foregroundStyle(.secondary)
+                    Image(systemName: "magnifyingglass").font(.system(size: 23, weight: .light)).foregroundStyle(Palette.secondary)
                     NativeSpotlightField(text: $search, placeholder: "Find a topic or source…", accessibilityName: "Search topics and sources", focusRequest: focusRequest,
                         onSubmit: { if let row = rows.first(where: { $0.id == selectedID }) { select(row) } },
                         onMove: { selectedID = SpotlightSearchRules.moving(selectedID, in: rows.map(\.id), by: $0) },
                         onEscape: close, canFocus: { isCurrent && !model.showingCommandPalette && model.conversationAttachmentRequest == nil })
                         .frame(height: 30)
-                    Button(action: close) { Text("esc").font(.caption.monospaced()).foregroundStyle(.secondary).padding(5).background(.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 5)) }
+                    Button(action: close) { Text("esc").font(StackType.caption.monospaced()).foregroundStyle(Palette.secondary).padding(5).background(.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 5)) }
                         .buttonStyle(.plain).accessibilityLabel("Close topic and source search")
                 }
                 HStack(spacing: 8) {
@@ -134,22 +134,22 @@ struct KnowledgeFilterSpotlight: View {
                     LazyVStack(alignment: .leading, spacing: 2) {
                         if let error {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled)
+                                Text(error).font(StackType.detail).foregroundStyle(.red).textSelection(.enabled)
                                 Button("Retry topic search") { Task { await load(reset: true) } }.buttonStyle(.bordered)
                             }.padding(14)
                         }
                         if rows.isEmpty && !loading && error == nil {
-                            Text("No matching topics or sources.").font(.callout).foregroundStyle(.secondary).padding(24)
+                            Text("No matching topics or sources.").font(StackType.detail).foregroundStyle(Palette.secondary).padding(24)
                         }
                         ForEach(rows) { row in
                             Button { select(row) } label: {
                                 HStack(spacing: 12) {
-                                    Image(systemName: row.kind == "topic" ? "number" : "doc.text").frame(width: 20).foregroundStyle(Palette.accent)
-                                    Text(row.title).font(.callout).lineLimit(1)
+                                    Image(systemName: row.kind == "topic" ? "number" : "doc.text").frame(width: 20).foregroundStyle(Palette.link)
+                                    Text(row.title).font(StackType.detail).lineLimit(1)
                                     Spacer(minLength: 8)
-                                    Text(KnowledgeFilterSearchRules.countLabel(row.count, singular: row.kind == "topic" ? "note" : "file")).font(.caption).foregroundStyle(.secondary)
+                                    Text(KnowledgeFilterSearchRules.countLabel(row.count, singular: row.kind == "topic" ? "note" : "file")).font(StackType.caption).foregroundStyle(Palette.secondary)
                                     if (row.kind == "topic" ? filters.topic : filters.provider) == row.value {
-                                        Image(systemName: "checkmark").font(.caption.weight(.semibold)).foregroundStyle(Palette.accent)
+                                        Image(systemName: "checkmark").font(StackType.caption.weight(.semibold)).foregroundStyle(Palette.link)
                                     }
                                 }.padding(.horizontal, 12).frame(height: 42).contentShape(Rectangle())
                                     .background(selectedID == row.id ? Palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 8))
@@ -157,7 +157,7 @@ struct KnowledgeFilterSpotlight: View {
                         }
                         if category != "sources", nextOffset != nil {
                             Button("Load more topics") { moreTask?.cancel(); moreTask = Task { await load(reset: false) } }
-                                .buttonStyle(.plain).font(.callout).foregroundStyle(Palette.accent).padding(12).disabled(loading)
+                                .buttonStyle(.plain).font(StackType.detail).foregroundStyle(Palette.link).padding(12).disabled(loading)
                         }
                     }.padding(10)
                 }.frame(height: KnowledgeFilterSearchRules.resultHeight(rowCount: rows.count, loading: loading, hasError: error != nil, hasActiveFilters: hasActiveFilters))
@@ -166,14 +166,14 @@ struct KnowledgeFilterSpotlight: View {
             Divider()
             HStack(spacing: 12) {
                 Toggle("Include routine activity", isOn: Binding(get: { filters.includeActivity }, set: { filters.includeActivity = $0; apply() }))
-                    .toggleStyle(.checkbox).font(.caption)
+                    .toggleStyle(.checkbox).font(StackType.caption)
                 Spacer(minLength: 8)
-                Text(category == "sources" ? "↑↓ choose · ↵ apply" : "\(KnowledgeFilterSearchRules.countLabel(total, singular: "topic")) · ↑↓ choose · ↵ apply").font(.caption2).foregroundStyle(.secondary)
+                Text(category == "sources" ? "↑↓ choose · ↵ apply" : "\(KnowledgeFilterSearchRules.countLabel(total, singular: "topic")) · ↑↓ choose · ↵ apply").font(StackType.caption).foregroundStyle(Palette.secondary)
             }.padding(.horizontal, 22).padding(.vertical, 13)
         }
         .frame(maxWidth: 680, maxHeight: 550)
         .fixedSize(horizontal: false, vertical: true)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background { StackFrostedSurface().clipShape(RoundedRectangle(cornerRadius: 20)) }
         .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(.primary.opacity(0.1)) }
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.22), radius: 30, y: 14)
@@ -189,7 +189,7 @@ struct KnowledgeFilterSpotlight: View {
     }
     private func categoryButton(_ title: String, value: String) -> some View {
         Button { category = value; focusRequest += 1 } label: {
-            Text(title).font(.callout.weight(category == value ? .semibold : .regular)).padding(.horizontal, 12).padding(.vertical, 6)
+            Text(title).font(StackType.detail.weight(category == value ? .semibold : .regular)).padding(.horizontal, 12).padding(.vertical, 6)
                 .background(category == value ? Palette.accent.opacity(0.13) : .clear, in: Capsule())
         }.buttonStyle(.plain)
     }
@@ -199,7 +199,7 @@ struct KnowledgeFilterSpotlight: View {
                 Label(title, systemImage: symbol).lineLimit(1).truncationMode(.middle).frame(maxWidth: 220)
                 Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
             }
-        }.font(.caption).buttonStyle(.bordered).controlSize(.small).accessibilityLabel("Clear filter \(title)").help(title)
+        }.font(StackType.caption).buttonStyle(.bordered).controlSize(.small).accessibilityLabel("Clear filter \(title)").help(title)
     }
     private func apply() {
         guard isCurrent else { return }

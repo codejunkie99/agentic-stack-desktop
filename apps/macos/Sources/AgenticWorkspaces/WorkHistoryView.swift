@@ -11,12 +11,12 @@ struct WorkHistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 14) {
-                TextField("Find work, conversations, and tasks", text: $query).textFieldStyle(.roundedBorder)
+                StackSearchField(title: "Find work, conversations, and tasks", text: $query)
                 Picker("Show", selection: $filter) {
                     Text("All work").tag("all"); Text("Ongoing").tag("active"); Text("Needs review").tag("review")
                 }.frame(width: 165)
                 Button("Run history") { model.section = .runs }
-                Button("New work", systemImage: "plus") { model.newConversation() }.buttonStyle(.borderedProminent)
+                Button("New work", systemImage: "plus") { model.newConversation() }.buttonStyle(.borderedProminent).tint(Palette.accent)
             }.padding(20)
             Divider()
             ScrollView {
@@ -26,12 +26,12 @@ struct WorkHistoryView: View {
                     }
                     ForEach(items) { item in
                         HStack(alignment: .top, spacing: 14) {
-                            Image(systemName: item.status == "completed" ? "checkmark.circle" : "circle.dotted").foregroundStyle(Palette.accent).padding(.top, 2)
+                            Image(systemName: item.status == "completed" ? "checkmark.circle" : "circle.dotted").foregroundStyle(Palette.link).padding(.top, 2)
                             VStack(alignment: .leading, spacing: 7) {
-                                Button(item.title) { model.openWork(item) }.buttonStyle(.plain).font(.callout.weight(.semibold))
+                                Button(item.title) { model.openWork(item) }.buttonStyle(.plain).font(StackType.detail.weight(.semibold))
                                 let nextAction = item.checkpoint?.nextAction ?? ""
-                                Text(nextAction.isEmpty ? item.objective : nextAction).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                                Text("\(item.conversationIds.count) sessions · \(item.status.replacingOccurrences(of: "_", with: " ").capitalized)").font(.caption2).foregroundStyle(.secondary)
+                                Text(nextAction.isEmpty ? item.objective : nextAction).font(StackType.caption).foregroundStyle(Palette.secondary).lineLimit(2)
+                                Text("\(item.conversationIds.count) sessions · \(item.status.replacingOccurrences(of: "_", with: " ").capitalized)").font(StackType.caption).foregroundStyle(Palette.secondary)
                             }
                             Spacer()
                             Menu("Continue with…") {
@@ -44,13 +44,13 @@ struct WorkHistoryView: View {
                     ForEach(model.conversations.filter { $0.workId == nil && matches($0.title) && filter == "all" }) { conversation in
                         Button { model.openConversation(conversation) } label: {
                             HStack(spacing: 14) {
-                                Image(systemName: "bubble.left").foregroundStyle(Palette.accent)
+                                Image(systemName: "bubble.left").foregroundStyle(Palette.link)
                                 VStack(alignment: .leading, spacing: 5) {
-                                    Text(conversation.title).font(.callout.weight(.medium))
-                                    Text(conversation.agentName ?? conversation.agent).font(.caption).foregroundStyle(.secondary)
+                                    Text(conversation.title).font(StackType.detail.weight(.medium))
+                                    Text(conversation.agentName ?? conversation.agent).font(StackType.caption).foregroundStyle(Palette.secondary)
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                                Image(systemName: "chevron.right").foregroundStyle(Palette.secondary)
                             }.padding(.vertical, 18).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                         Divider()
@@ -58,13 +58,13 @@ struct WorkHistoryView: View {
                     ForEach(model.runs.filter { $0.workId == nil && $0.conversationId == nil && matches($0.task) && (filter == "all" || (filter == "review" ? $0.status == "needs_review" : $0.isActive)) }) { run in
                         Button { model.openStandaloneRun(run.id) } label: {
                             HStack(spacing: 14) {
-                                Image(systemName: "play.circle").foregroundStyle(Palette.accent)
+                                Image(systemName: "play.circle").foregroundStyle(Palette.link)
                                 VStack(alignment: .leading, spacing: 5) {
-                                    Text(run.task).font(.callout.weight(.medium)).lineLimit(2)
-                                    Text("Standalone task · " + run.statusLabel).font(.caption).foregroundStyle(.secondary)
+                                    Text(run.task).font(StackType.detail.weight(.medium)).lineLimit(2)
+                                    Text("Standalone task · " + run.statusLabel).font(StackType.caption).foregroundStyle(Palette.secondary)
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                                Image(systemName: "chevron.right").foregroundStyle(Palette.secondary)
                             }.padding(.vertical, 18).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                         Divider()

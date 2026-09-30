@@ -28,7 +28,7 @@ extension DesktopSection {
         case .runs: "Tasks"
         case .memoryBrowse: "Browse"
         case .personal: "Personal"
-        case .memory: "Lessons"
+        case .memory: "Project memory"
         case .handover: "Exports"
         case .integrations: "Connections"
         case .agents: "Project adapters"
@@ -39,8 +39,8 @@ extension DesktopSection {
     }
     var siblings: [DesktopSection] {
         switch workspace {
-        case .graph: [.graph, .chat, .insights, .runs, .terminal, .loops]
-        case .memory: [.memoryBrowse, .personal, .memory, .references, .handover]
+        case .graph: [.graph, .chat, .overview, .insights, .runs, .terminal, .loops]
+        case .memory: [.memory, .memoryBrowse, .personal, .references, .handover]
         case .integrations: [.integrations, .agents]
         case .settings: [.settings, .protocols, .maintenance, .hosting]
         default: []
@@ -55,7 +55,7 @@ extension DesktopSection {
         case .runs: "Inspect run activity, results and pending reviews"
         case .memoryBrowse: "Search imported memories and inspect their original sources"
         case .personal: "Review the stable preferences and current context agents carry into work"
-        case .memory: "Review candidate lessons and edit project preferences"
+        case .memory: "Review evidence, Jev suggestions, corrections and decision history"
         case .references: "Review documents explicitly included in future tasks"
         case .handover: "Export reviewed references as a handover or portable bundle"
         case .agents: "Install project adapters for your coding tools"
